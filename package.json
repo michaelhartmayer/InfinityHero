@@ -1,0 +1,15 @@
+{
+    "name": "vibemaster-root",
+    "private": true,
+    "scripts": {
+        "dev": "concurrently \"npm run dev --prefix shared\" \"npm run dev --prefix server\" \"npm run dev --prefix client\""
+    },
+    "devDependencies": {
+        "concurrently": "^9.1.0"
+    },
+    "workspaces": [
+        "client",
+        "server",
+        "shared"
+    ]
+}
