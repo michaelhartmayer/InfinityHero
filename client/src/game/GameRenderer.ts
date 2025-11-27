@@ -214,7 +214,7 @@ export class GameRenderer {
         wrapper.appendChild(bubble);
 
         const label = new CSS2DObject(wrapper);
-        label.position.set(0, 1.5, 0); // Above head
+        label.position.set(0, 1.7, 0); // Above head
         playerMesh.add(label);
 
         this.chatBubbles.set(playerId, {
@@ -381,7 +381,7 @@ export class GameRenderer {
                 div.textContent = player.name;
 
                 const label = new CSS2DObject(div);
-                label.position.set(0, 1.0, 0); // Above head
+                label.position.set(0, 1.5, 0); // Above head
                 mesh.add(label);
 
                 this.playersGroup.add(mesh);
@@ -419,7 +419,7 @@ export class GameRenderer {
                 const bgGeo = new THREE.PlaneGeometry(0.8, 0.1);
                 const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
                 const bgMesh = new THREE.Mesh(bgGeo, bgMat);
-                bgMesh.position.set(0, 0.6, 0);
+                bgMesh.position.set(0, 1.15, 0);
 
                 const fgGeo = new THREE.PlaneGeometry(0.8, 0.1);
                 const fgMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -497,7 +497,7 @@ export class GameRenderer {
                 const bgGeo = new THREE.PlaneGeometry(0.6, 0.1);
                 const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
                 const bgMesh = new THREE.Mesh(bgGeo, bgMat);
-                bgMesh.position.set(0, 0.5, 0);
+                bgMesh.position.set(0, 0.7, 0);
 
                 const fgGeo = new THREE.PlaneGeometry(0.6, 0.1);
                 const fgMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
@@ -521,7 +521,7 @@ export class GameRenderer {
                 div.style.borderRadius = '4px';
 
                 const label = new CSS2DObject(div);
-                label.position.set(0, 0.8, 0);
+                label.position.set(0, 1.0, 0);
                 label.name = 'nameLabel';
                 mesh.add(label);
 
