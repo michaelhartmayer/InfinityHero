@@ -136,29 +136,50 @@ function App() {
     }
   };
 
-  const handleSendMessage = (message: string) => {
-    if (socket) {
-      socket.emit(EVENTS.CHAT_MESSAGE, message);
-    }
-  };
+
 
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isChatMode, setIsChatMode] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // If in chat mode, let the input handle the key events (except maybe Escape to exit?)
+      // But wait, if we are in chat mode, the input is focused.
+      // The global listener sees the event too.
+      // If we press Enter in chat mode, the form submits (handled in ChatWindow), AND this listener fires.
+      // We need to be careful not to toggle it back on immediately or something.
+
+      // Actually, if input is focused, we return early below.
+
       // Ignore if typing in an input or textarea
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // If we want to allow Escape to exit chat mode:
+        if (e.key === 'Escape') {
+          setIsChatMode(false);
+          // We also need to blur, which is handled by the effect in ChatWindow dependent on isChatMode
+        }
         return;
       }
 
       if (e.key.toLowerCase() === 'i') {
         setIsInventoryOpen(prev => !prev);
       }
+
+      if (e.key === 'Enter') {
+        setIsChatMode(true);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleSendMessage = (message: string) => {
+    if (socket) {
+      socket.emit(EVENTS.CHAT_MESSAGE, message);
+      setIsChatMode(false);
+    }
+  };
 
   const localPlayer = socket?.id ? players[socket.id] : undefined;
 
@@ -172,7 +193,7 @@ function App() {
         </div>
 
         <div className="bottom-ui">
-          <ChatWindow messages={messages} onSendMessage={handleSendMessage} />
+          <ChatWindow messages={messages} onSendMessage={handleSendMessage} isChatMode={isChatMode} onSetChatMode={setIsChatMode} />
           <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} />
         </div>
 

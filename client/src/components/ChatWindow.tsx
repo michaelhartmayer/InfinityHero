@@ -6,9 +6,10 @@ interface ChatWindowProps {
     onSendMessage: (message: string) => void;
 }
 
-export function ChatWindow({ messages, onSendMessage }: ChatWindowProps) {
+export function ChatWindow({ messages, onSendMessage, isChatMode, onSetChatMode }: ChatWindowProps & { isChatMode: boolean, onSetChatMode: (mode: boolean) => void }) {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -18,11 +19,21 @@ export function ChatWindow({ messages, onSendMessage }: ChatWindowProps) {
         scrollToBottom();
     }, [messages]);
 
+    useEffect(() => {
+        if (isChatMode) {
+            inputRef.current?.focus();
+        } else {
+            inputRef.current?.blur();
+        }
+    }, [isChatMode]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (input.trim()) {
             onSendMessage(input);
             setInput('');
+        } else {
+            onSetChatMode(false);
         }
     };
 
@@ -37,12 +48,14 @@ export function ChatWindow({ messages, onSendMessage }: ChatWindowProps) {
                 ))}
                 <div ref={messagesEndRef} />
             </div>
-            <form onSubmit={handleSubmit} className="chat-input-form">
+            <form onSubmit={handleSubmit} className="chat-input-form" style={{ opacity: isChatMode ? 1 : 0.5, pointerEvents: 'auto' }}>
                 <input
+                    ref={inputRef}
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Press Enter to chat..."
+                    onClick={() => onSetChatMode(true)}
+                    placeholder={isChatMode ? "Type a message..." : "Press Enter to chat..."}
                     className="chat-input"
                 />
             </form>
