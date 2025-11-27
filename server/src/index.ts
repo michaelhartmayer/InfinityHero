@@ -1,0 +1,163 @@
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import { EVENTS, MonsterStrategyType } from '@vibemaster/shared';
+
+import { WorldManager } from './managers/WorldManager.js';
+import { EntityManager } from './managers/EntityManager.js';
+import { GameLoop } from './GameLoop.js';
+
+const app = express();
+app.use(cors());
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+const worldManager = new WorldManager();
+const entityManager = new EntityManager();
+const gameLoop = new GameLoop(io, entityManager, worldManager);
+
+// Spawn some random items
+for (let i = 0; i < 10; i++) {
+    const item: any = {
+        id: `item_${i}`,
+        type: 'item',
+        name: 'Health Potion',
+        description: 'Restores 50 HP',
+        icon: '🧪',
+        position: {
+            x: Math.floor(Math.random() * 40) + 5,
+            y: Math.floor(Math.random() * 40) + 5
+        }
+    };
+    entityManager.addItem(item);
+}
+
+// Spawn some random monsters
+// Spawn some random monsters
+for (let i = 0; i < 10; i++) {
+    const monster = entityManager.addMonster(
+        `monster_${i}`,
+        'Goblin',
+        Math.floor(Math.random() * 40) + 5,
+        Math.floor(Math.random() * 40) + 5
+    );
+    monster.strategy = MonsterStrategyType.PASSIVE;
+}
+
+gameLoop.start();
+
+io.on('connection', (socket) => {
+    try {
+        console.log('User connected:', socket.id);
+
+        const player = entityManager.addPlayer(socket.id, `Player ${socket.id.substring(0, 4)}`);
+
+        socket.emit(EVENTS.WELCOME, { message: 'Welcome to VibeMaster!', playerId: socket.id });
+        socket.emit(EVENTS.MAP_DATA, worldManager.getMap());
+
+        // Debug: Log all incoming events
+        socket.onAny((eventName, ...args) => {
+            console.log('Received event:', eventName, 'with args:', args);
+        });
+
+        socket.on(EVENTS.PLAYER_MOVE, (target: { x: number, y: number }) => {
+            console.log(`Player ${socket.id.substring(0, 4)} moving to:`, target);
+            const player = entityManager.getPlayer(socket.id);
+            if (player) {
+                // Calculate path from current position to target
+                const obstacles = entityManager.getOccupiedPositions(socket.id);
+                const path = worldManager.findPath(
+                    player.position.x,
+                    player.position.y,
+                    target.x,
+                    target.y,
+                    obstacles
+                );
+
+                if (path.length > 0) {
+                    console.log(`  -> Path found! Length: ${path.length}`);
+                    entityManager.setMovePath(socket.id, path);
+                } else {
+                    console.log('  -> No path found or target unreachable');
+                }
+            }
+        });
+
+        socket.on(EVENTS.CHAT_MESSAGE, (message: string) => {
+            const player = entityManager.getPlayer(socket.id);
+            if (player) {
+                const chatMessage = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    playerId: player.id,
+                    playerName: player.name,
+                    message: message.substring(0, 200),
+                    timestamp: Date.now()
+                };
+                io.emit(EVENTS.CHAT_MESSAGE, chatMessage);
+            }
+        });
+
+        socket.on(EVENTS.ATTACK, (targetId: string) => {
+            const attacker = entityManager.getPlayer(socket.id);
+            let target: any = entityManager.getPlayer(targetId);
+            if (!target) {
+                target = entityManager.getMonster(targetId);
+            }
+
+            if (attacker && target) {
+                const dx = attacker.position.x - target.position.x;
+                const dy = attacker.position.y - target.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist <= 2) {
+                    const isDead = entityManager.applyDamage(targetId, 10, attacker.id);
+                    io.emit(EVENTS.ATTACK, { attackerId: attacker.id, targetId: target.id, damage: 10 });
+
+                    if (isDead) {
+                        io.emit(EVENTS.PLAYER_DEATH, { playerId: target.id });
+                        if (target.type === 'player') {
+                            entityManager.respawnPlayer(target.id);
+                        } else {
+                            entityManager.removeMonster(target.id);
+                        }
+                    }
+                }
+            }
+        });
+
+        socket.on(EVENTS.ITEM_PICKUP, (itemId: string) => {
+            const player = entityManager.getPlayer(socket.id);
+            const item = entityManager.getItem(itemId);
+
+            if (player && item) {
+                const dx = player.position.x - item.position.x;
+                const dy = player.position.y - item.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist <= 1.5) {
+                    entityManager.removeItem(itemId);
+                    player.inventory.push(item);
+                }
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('User disconnected:', socket.id);
+            entityManager.removePlayer(socket.id);
+        });
+    } catch (error) {
+        console.error('Error in connection handler:', error);
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

@@ -1,0 +1,204 @@
+import { useEffect, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { EVENTS, type WorldMap, type Player, type GameState, type ChatMessage, type Item, type Monster } from '@vibemaster/shared';
+import { GameCanvas } from './components/GameCanvas';
+import { ChatWindow } from './components/ChatWindow';
+import { Inventory } from './components/Inventory';
+import { HUD } from './components/HUD';
+import { BottomBar } from './components/BottomBar';
+import './App.css';
+
+function App() {
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  const [mapData, setMapData] = useState<WorldMap | null>(null);
+  const [players, setPlayers] = useState<Record<string, Player>>({});
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [items, setItems] = useState<Record<string, Item>>({});
+  const [monsters, setMonsters] = useState<Record<string, Monster>>({});
+
+  useEffect(() => {
+    // Connect to Socket.IO via Vite proxy (no need to specify port)
+    console.log('Connecting to server...');
+    const newSocket = io();
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+
+    newSocket.on(EVENTS.WELCOME, (data: any) => {
+      console.log('Server says:', data.message);
+    });
+
+    newSocket.on(EVENTS.MAP_DATA, (data: WorldMap) => {
+      console.log('Received map data', data);
+      setMapData(data);
+    });
+
+    newSocket.on(EVENTS.STATE_UPDATE, (state: GameState) => {
+      setPlayers(state.players);
+      if (state.items) {
+        setItems(state.items);
+      }
+      if (state.monsters) {
+        setMonsters(state.monsters);
+      }
+    });
+
+    newSocket.on(EVENTS.CHAT_MESSAGE, (message: ChatMessage) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
+    newSocket.on(EVENTS.ATTACK, (data: any) => {
+      console.log('Attack:', data);
+      // Visual feedback could go here
+    });
+
+    newSocket.on(EVENTS.PLAYER_DEATH, (data: any) => {
+      console.log('Player died:', data);
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  const handleMove = (x: number, y: number) => {
+    console.log('handleMove called:', x, y);
+    if (socket) {
+      console.log('Socket connected, processing move...');
+
+      const localPlayer = socket.id ? players[socket.id] : null;
+
+      // Don't move if clicking on self
+      if (localPlayer && Math.round(localPlayer.position.x) === x && Math.round(localPlayer.position.y) === y) {
+        console.log('Clicked on self, ignoring');
+        return;
+      }
+
+      // Check for item pickup
+      for (const item of Object.values(items)) {
+        if (Math.round(item.position.x) === x && Math.round(item.position.y) === y) {
+          console.log('Clicking on item:', item.id);
+          socket.emit(EVENTS.ITEM_PICKUP, item.id);
+          // We can also move there? For now just pickup if clicked.
+          // If we want to move AND pickup, we should emit move too.
+          // But let's keep it simple: click item = try to pickup.
+          // If too far, server ignores.
+          // Maybe we should move to it?
+          socket.emit(EVENTS.PLAYER_MOVE, { x, y }); // Move to item
+          return;
+        }
+      }
+
+      // Check if clicking on a player to attack
+      // This is a naive check, ideally we'd check if the click target is an entity
+      // For now, let's just say right click is attack, left click is move?
+      // Or we can check if there's a player at x,y
+
+      // Let's assume for MVP: Left click = Move.
+      // To attack, we need a way to select a target.
+      // Let's iterate players to see if we clicked one.
+
+      let targetId = null;
+      for (const [id, p] of Object.entries(players)) {
+        if (id === socket.id) continue; // Don't attack self
+        if (Math.round(p.position.x) === x && Math.round(p.position.y) === y) {
+          targetId = id;
+          break;
+        }
+      }
+
+      // Check monsters
+      if (!targetId) {
+        for (const [id, m] of Object.entries(monsters)) {
+          if (Math.round(m.position.x) === x && Math.round(m.position.y) === y) {
+            targetId = id;
+            break;
+          }
+        }
+      }
+
+      if (targetId) {
+        console.log('Attacking target:', targetId);
+        socket.emit(EVENTS.ATTACK, targetId);
+      } else {
+        console.log('Moving to:', x, y);
+        socket.emit(EVENTS.PLAYER_MOVE, { x, y });
+      }
+    } else {
+      console.log('No socket connection!');
+    }
+  };
+
+  const handleSendMessage = (message: string) => {
+    if (socket) {
+      socket.emit(EVENTS.CHAT_MESSAGE, message);
+    }
+  };
+
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key.toLowerCase() === 'i') {
+        setIsInventoryOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const localPlayer = socket?.id ? players[socket.id] : undefined;
+
+  return (
+    <div className="App">
+      <div className="ui-layer">
+        {localPlayer && <HUD player={localPlayer} />}
+
+        <div className="center-ui">
+          {/* Messages or notifications could go here */}
+        </div>
+
+        <div className="bottom-ui">
+          <ChatWindow messages={messages} onSendMessage={handleSendMessage} />
+          <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} />
+        </div>
+
+        {localPlayer && (
+          <Inventory
+            items={localPlayer.inventory || []}
+            isOpen={isInventoryOpen}
+            onClose={() => setIsInventoryOpen(false)}
+            onItemClick={(item) => console.log('Clicked item:', item)}
+          />
+        )}
+      </div>
+
+      <div id="game-container">
+        <GameCanvas
+          mapData={mapData}
+          players={players}
+          items={items}
+          monsters={monsters}
+          localPlayerId={socket?.id || null}
+          lastMessage={messages.length > 0 ? messages[messages.length - 1] : null}
+          onMove={handleMove}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default App;
