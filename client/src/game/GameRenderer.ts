@@ -35,7 +35,7 @@ export class GameRenderer {
     private cursorGroundEffect: CursorGroundEffect;
     private cursorPosition: { x: number, y: number } | null = null;
     private tilesetLoader: TilesetLoader;
-    private tilesetsLoaded: boolean = false;
+
     private currentMapData: WorldMap | null = null;
     private lastFrameTime: number = 0;
     private shadowTexture: THREE.Texture;
@@ -150,7 +150,7 @@ export class GameRenderer {
                 '/assets/tilesets/dev-tileset-stone.png'
             )
         ]);
-        this.tilesetsLoaded = true;
+
         console.log('✅ Tilesets loaded successfully');
 
         // Re-render map if it was already loaded
