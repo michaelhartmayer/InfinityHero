@@ -155,11 +155,17 @@ export class GameRenderer {
         const playerMesh = this.playerMeshes.get(playerId);
         if (!playerMesh) return;
 
-        const div = document.createElement('div');
-        div.className = 'chat-bubble';
-        div.textContent = message;
+        // Create wrapper for positioning
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chat-bubble-wrapper';
 
-        const label = new CSS2DObject(div);
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.textContent = message;
+
+        wrapper.appendChild(bubble);
+
+        const label = new CSS2DObject(wrapper);
         label.position.set(0, 1.5, 0); // Above head
         playerMesh.add(label);
 
@@ -287,6 +293,12 @@ export class GameRenderer {
                 mesh.position.x += (targetX - mesh.position.x) * 0.3;
                 mesh.position.y += (targetY - mesh.position.y) * 0.3;
                 mesh.position.z = 0.4;
+            }
+
+            // Update player name label if it changed
+            const nameLabel = mesh.children.find(child => child instanceof CSS2DObject) as CSS2DObject | undefined;
+            if (nameLabel && nameLabel.element.textContent !== player.name) {
+                nameLabel.element.textContent = player.name;
             }
 
             let healthBar = mesh.getObjectByName('healthBar') as THREE.Mesh;

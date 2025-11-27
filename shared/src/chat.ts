@@ -5,3 +5,9 @@ export interface ChatMessage {
     message: string;
     timestamp: number;
 }
+
+export interface BroadcastMessage {
+    id: string;
+    message: string;
+    timestamp: number;
+}

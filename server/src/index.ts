@@ -102,14 +102,150 @@ io.on('connection', (socket) => {
         socket.on(EVENTS.CHAT_MESSAGE, (message: string) => {
             const player = entityManager.getPlayer(socket.id);
             if (player) {
-                const chatMessage = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    playerId: player.id,
-                    playerName: player.name,
-                    message: message.substring(0, 200),
-                    timestamp: Date.now()
-                };
-                io.emit(EVENTS.CHAT_MESSAGE, chatMessage);
+                // Check if it's a slash command
+                if (message.startsWith('/')) {
+                    const parts = message.slice(1).split(' ');
+                    const command = parts[0].toLowerCase();
+                    const args = parts.slice(1);
+
+                    switch (command) {
+                        case 'help':
+                            socket.emit(EVENTS.COMMAND_HELP, {
+                                commands: [
+                                    '/help - Lists all available commands',
+                                    '/alias [name] - Changes your character name',
+                                    '/respawn - Respawns you at the starting location',
+                                    '/spawn [monster id] [quantity] - Spawns monsters around you',
+                                    '/broadcast [message] - Sends a broadcast message to all players'
+                                ]
+                            });
+                            break;
+
+                        case 'alias':
+                            if (args.length === 0) {
+                                socket.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: 'Usage: /alias [name]',
+                                    timestamp: Date.now()
+                                });
+                            } else {
+                                const newName = args.join(' ').substring(0, 20);
+                                entityManager.setPlayerName(socket.id, newName);
+                                socket.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: `Your name has been changed to: ${newName}`,
+                                    timestamp: Date.now()
+                                });
+                            }
+                            break;
+
+                        case 'respawn':
+                            entityManager.respawnPlayer(socket.id);
+                            socket.emit(EVENTS.CHAT_MESSAGE, {
+                                id: Math.random().toString(36).substr(2, 9),
+                                playerId: 'system',
+                                playerName: 'System',
+                                message: 'You have been respawned!',
+                                timestamp: Date.now()
+                            });
+                            break;
+
+                        case 'spawn':
+                            if (args.length === 0) {
+                                socket.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: 'Usage: /spawn [monster id] [quantity]',
+                                    timestamp: Date.now()
+                                });
+                            } else {
+                                const monsterId = args[0];
+                                const quantity = args.length > 1 ? parseInt(args[1]) : 1;
+                                const template = monsterDatabase.getTemplate(monsterId);
+
+                                if (!template) {
+                                    socket.emit(EVENTS.CHAT_MESSAGE, {
+                                        id: Math.random().toString(36).substr(2, 9),
+                                        playerId: 'system',
+                                        playerName: 'System',
+                                        message: `Monster ID "${monsterId}" not found in database`,
+                                        timestamp: Date.now()
+                                    });
+                                } else {
+                                    const spawnCount = Math.min(Math.max(1, quantity), 10); // Limit to 10
+                                    for (let i = 0; i < spawnCount; i++) {
+                                        const offsetX = Math.floor(Math.random() * 5) - 2;
+                                        const offsetY = Math.floor(Math.random() * 5) - 2;
+                                        const spawnX = Math.max(1, Math.min(49, player.position.x + offsetX));
+                                        const spawnY = Math.max(1, Math.min(49, player.position.y + offsetY));
+
+                                        entityManager.addMonster(
+                                            `monster_${Date.now()}_${i}`,
+                                            template.name,
+                                            spawnX,
+                                            spawnY,
+                                            {
+                                                hp: template.hp,
+                                                level: template.baseLevel,
+                                                strategy: MonsterStrategyType.PASSIVE
+                                            }
+                                        );
+                                    }
+                                    socket.emit(EVENTS.CHAT_MESSAGE, {
+                                        id: Math.random().toString(36).substr(2, 9),
+                                        playerId: 'system',
+                                        playerName: 'System',
+                                        message: `Spawned ${spawnCount} ${template.name}(s) around you`,
+                                        timestamp: Date.now()
+                                    });
+                                }
+                            }
+                            break;
+
+                        case 'broadcast':
+                            if (args.length === 0) {
+                                socket.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: 'Usage: /broadcast [message]',
+                                    timestamp: Date.now()
+                                });
+                            } else {
+                                const broadcastMsg = args.join(' ').substring(0, 200);
+                                io.emit(EVENTS.BROADCAST_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    message: broadcastMsg,
+                                    timestamp: Date.now()
+                                });
+                            }
+                            break;
+
+                        default:
+                            socket.emit(EVENTS.CHAT_MESSAGE, {
+                                id: Math.random().toString(36).substr(2, 9),
+                                playerId: 'system',
+                                playerName: 'System',
+                                message: `Unknown command: /${command}. Type /help for a list of commands.`,
+                                timestamp: Date.now()
+                            });
+                    }
+                } else {
+                    // Regular chat message
+                    const chatMessage = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        playerId: player.id,
+                        playerName: player.name,
+                        message: message.substring(0, 200),
+                        timestamp: Date.now()
+                    };
+                    io.emit(EVENTS.CHAT_MESSAGE, chatMessage);
+                }
             }
         });
 

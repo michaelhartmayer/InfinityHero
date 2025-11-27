@@ -110,7 +110,10 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
     // Handle chat bubbles
     useEffect(() => {
         if (lastMessage && rendererRef.current) {
-            rendererRef.current.showChatBubble(lastMessage.playerId, lastMessage.message);
+            // Don't show chat bubbles for system messages
+            if (lastMessage.playerId !== 'system') {
+                rendererRef.current.showChatBubble(lastMessage.playerId, lastMessage.message);
+            }
         }
     }, [lastMessage]);
 

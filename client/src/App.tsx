@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { EVENTS, type WorldMap, type Player, type GameState, type ChatMessage, type Item, type Monster } from '@vibemaster/shared';
+import { EVENTS, type WorldMap, type Player, type GameState, type ChatMessage, type BroadcastMessage, type Item, type Monster } from '@vibemaster/shared';
 import { GameCanvas } from './components/GameCanvas';
 import { ChatWindow } from './components/ChatWindow';
 import { Inventory } from './components/Inventory';
 import { HUD } from './components/HUD';
 import { BottomBar } from './components/BottomBar';
+import { BroadcastOverlay } from './components/BroadcastOverlay';
 import './App.css';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [items, setItems] = useState<Record<string, Item>>({});
   const [monsters, setMonsters] = useState<Record<string, Monster>>({});
+  const [broadcastMessage, setBroadcastMessage] = useState<BroadcastMessage | null>(null);
 
   useEffect(() => {
     // Connect to Socket.IO via Vite proxy (no need to specify port)
@@ -61,6 +63,23 @@ function App() {
 
     newSocket.on(EVENTS.PLAYER_DEATH, (data: any) => {
       console.log('Player died:', data);
+    });
+
+    newSocket.on(EVENTS.BROADCAST_MESSAGE, (message: BroadcastMessage) => {
+      setBroadcastMessage(message);
+    });
+
+    newSocket.on(EVENTS.COMMAND_HELP, (data: { commands: string[] }) => {
+      console.log('Received help commands:', data);
+      // Display help commands in chat
+      const helpMessage: ChatMessage = {
+        id: Math.random().toString(36).substr(2, 9),
+        playerId: 'system',
+        playerName: 'System',
+        message: 'Available commands:\n' + data.commands.join('\n'),
+        timestamp: Date.now()
+      };
+      setMessages((prev) => [...prev, helpMessage]);
     });
 
     return () => {
@@ -143,14 +162,6 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // If in chat mode, let the input handle the key events (except maybe Escape to exit?)
-      // But wait, if we are in chat mode, the input is focused.
-      // The global listener sees the event too.
-      // If we press Enter in chat mode, the form submits (handled in ChatWindow), AND this listener fires.
-      // We need to be careful not to toggle it back on immediately or something.
-
-      // Actually, if input is focused, we return early below.
-
       // Ignore if typing in an input or textarea
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -162,19 +173,40 @@ function App() {
         return;
       }
 
+      // Don't process keys if inventory is open (except 'i' to close it)
+      if (isInventoryOpen && e.key.toLowerCase() !== 'i') {
+        return;
+      }
+
       if (e.key.toLowerCase() === 'i') {
+        e.preventDefault();
         setIsInventoryOpen(prev => !prev);
       }
 
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !isChatMode) {
+        e.preventDefault();
         setIsChatMode(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isInventoryOpen, isChatMode]);
 
   const handleSendMessage = (message: string) => {
+    // Client-side fallback for help command
+    if (message.trim().toLowerCase() === '/help') {
+      const helpMessage: ChatMessage = {
+        id: Math.random().toString(36).substr(2, 9),
+        playerId: 'system',
+        playerName: 'System',
+        message: 'Available commands:\n/help - Lists all available commands\n/alias [name] - Changes your character name\n/respawn - Respawns you at the starting location\n/spawn [monster id] [quantity] - Spawns monsters around you\n/broadcast [message] - Sends a broadcast message to all players',
+        timestamp: Date.now()
+      };
+      setMessages((prev) => [...prev, helpMessage]);
+      setIsChatMode(false);
+      return;
+    }
+
     if (socket) {
       socket.emit(EVENTS.CHAT_MESSAGE, message);
       setIsChatMode(false);
@@ -189,7 +221,7 @@ function App() {
         {localPlayer && <HUD player={localPlayer} />}
 
         <div className="center-ui">
-          {/* Messages or notifications could go here */}
+          <BroadcastOverlay message={broadcastMessage} />
         </div>
 
         <div className="bottom-ui">

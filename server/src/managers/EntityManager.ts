@@ -64,6 +64,15 @@ export class EntityManager {
         }
     }
 
+    public setPlayerName(id: string, name: string): boolean {
+        if (this.players[id]) {
+            this.players[id].name = name;
+            return true;
+        }
+        return false;
+    }
+
+
     public addMonster(
         id: string,
         name: string,

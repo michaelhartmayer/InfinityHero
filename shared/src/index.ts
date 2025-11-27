@@ -70,6 +70,11 @@ export const EVENTS = {
     PLAYER_DEATH: 'player_death',
     ITEM_PICKUP: 'item_pickup',
     ITEM_DROP: 'item_drop',
+    COMMAND_HELP: 'command_help',
+    COMMAND_ALIAS: 'command_alias',
+    COMMAND_RESPAWN: 'command_respawn',
+    COMMAND_SPAWN: 'command_spawn',
+    BROADCAST_MESSAGE: 'broadcast_message',
 };
 
 export const CONSTANTS = {

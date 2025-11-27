@@ -43,7 +43,14 @@ export function ChatWindow({ messages, onSendMessage, isChatMode, onSetChatMode 
                 {messages.map((msg) => (
                     <div key={msg.id} className="chat-message">
                         <span className="chat-author">{msg.playerName}:</span>
-                        <span className="chat-text">{msg.message}</span>
+                        <span className="chat-text">
+                            {msg.message.split('\n').map((line, i) => (
+                                <span key={i}>
+                                    {line}
+                                    {i < msg.message.split('\n').length - 1 && <br />}
+                                </span>
+                            ))}
+                        </span>
                     </div>
                 ))}
                 <div ref={messagesEndRef} />
