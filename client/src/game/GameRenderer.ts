@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three-stdlib';
 import { type WorldMap, TileType, type Player, type Item, type Monster } from '@vibemaster/shared';
+import { VFXLibrary } from '../vfx/VFXLibrary';
 
 export class GameRenderer {
     private scene: THREE.Scene;
@@ -24,6 +25,7 @@ export class GameRenderer {
 
     private highlightMesh: THREE.LineSegments;
     private labelRenderer: CSS2DRenderer;
+    private vfxLibrary: VFXLibrary;
 
     constructor(canvas: HTMLCanvasElement, localPlayerId: string | null) {
         this.localPlayerId = localPlayerId;
@@ -87,6 +89,8 @@ export class GameRenderer {
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
         dirLight.position.set(5, 10, 7);
         this.scene.add(dirLight);
+
+        this.vfxLibrary = new VFXLibrary(this.renderer, this.scene, this.camera);
 
         this.animate();
     }
@@ -458,6 +462,7 @@ export class GameRenderer {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
         this.labelRenderer.setSize(width, height);
+        this.vfxLibrary.resize(width, height);
     }
 
     private animate = () => {
@@ -486,7 +491,7 @@ export class GameRenderer {
             }
         }
 
-        this.renderer.render(this.scene, this.camera);
+        this.vfxLibrary.render(0.016);
         this.labelRenderer.render(this.scene, this.camera);
     }
 }

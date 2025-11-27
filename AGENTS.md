@@ -3,6 +3,7 @@
 > [!IMPORTANT]
 > **Project Identity**: This project is named **VibeMaster**, a 2D/2.5D Top-Down MMORPG.
 > **Directory Note**: The project is currently located in a directory named `InfinityHero`. Do not be confused by the folder name; the codebase is VibeMaster.
+> **Agents**: This document must be kept up to date with any changes to the codebase so that AI agents are properly informed.
 
 ## 1. Project Overview
 VibeMaster is a browser-based MMORPG using a **Client-Server** architecture.
@@ -13,7 +14,7 @@ VibeMaster is a browser-based MMORPG using a **Client-Server** architecture.
 ## 2. Technology Stack
 - **Language**: TypeScript (Strict mode).
 - **Build Tool**: Vite (Client), `tsc` (Server).
-- **Rendering**: Three.js (Standard Library), `three-stdlib` (CSS2DRenderer).
+- **Rendering**: Three.js (Standard Library), `three-stdlib` (CSS2DRenderer, EffectComposer).
 - **Networking**: Socket.io (Real-time bidirectional communication).
 - **State Management**: React State (UI), Custom `EntityManager` (Game Logic).
 
@@ -47,6 +48,19 @@ VibeMaster is a browser-based MMORPG using a **Client-Server** architecture.
     - React components (`HUD`, `ChatWindow`, `Inventory`) float **over** the canvas.
     - **In-Scene Labels**: Uses `CSS2DRenderer` for player names and chat bubbles to keep text crisp and DOM-accessible.
 - **Interpolation**: Client receives state updates and interpolates entity positions (`lerp`) for smooth rendering between server ticks.
+
+### 3.4 VFX Library (`/client/src/vfx`)
+- **Purpose**: Manages post-processing effects and visual enhancements via `three-stdlib`'s `EffectComposer`.
+- **Key Files**:
+    - `VFXLibrary.ts`: Main manager. Initializes `EffectComposer` and handles the render loop.
+    - `effects/`: Contains individual effect wrappers (e.g., `BloomEffect.ts`).
+- **Integration**:
+    - `GameRenderer` delegates the final render call to `vfxLibrary.render(deltaTime)`.
+    - **Resize**: Must forward resize events to `vfxLibrary.resize()`.
+- **Adding Effects**:
+    1. Create a class in `client/src/vfx/effects`.
+    2. Instantiate it in `VFXLibrary` constructor.
+    3. Add its `pass` to the `composer`.
 
 ## 4. Key Workflows
 
