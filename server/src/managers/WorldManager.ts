@@ -1,41 +1,66 @@
 import { WorldMap, Tile, TileType, CONSTANTS } from '@vibemaster/shared';
+import { MapLoader, type MapData } from '../utils/MapLoader.js';
 
 export class WorldManager {
     private map: WorldMap;
+    private mapData: MapData;
 
-    constructor() {
-        this.map = this.generateMap();
+    constructor(mapId: string = '01_starting_zone') {
+        this.mapData = MapLoader.loadMap(mapId);
+        this.map = this.generateMapFromData(this.mapData);
     }
 
-    private generateMap(): WorldMap {
-        const width = CONSTANTS.MAP_WIDTH;
-        const height = CONSTANTS.MAP_HEIGHT;
+    private generateMapFromData(mapData: MapData): WorldMap {
+        const width = mapData.width;
+        const height = mapData.height;
         const tiles: Tile[][] = [];
+
+        // Helper to convert string type to TileType enum
+        const getTileType = (typeStr: string): TileType => {
+            switch (typeStr.toUpperCase()) {
+                case 'GRASS': return TileType.GRASS;
+                case 'WALL': return TileType.WALL;
+                case 'WATER': return TileType.WATER;
+                case 'FLOOR': return TileType.FLOOR;
+                default: return TileType.GRASS;
+            }
+        };
+
+        // Initialize with default tiles
+        const defaultType = getTileType(mapData.tiles.default.type);
+        const defaultWalkable = mapData.tiles.default.walkable;
 
         for (let x = 0; x < width; x++) {
             tiles[x] = [];
             for (let y = 0; y < height; y++) {
-                // Simple generation: Borders are walls, rest is grass
-                let type = TileType.GRASS;
-                let walkable = true;
-
-                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                    type = TileType.WALL;
-                    walkable = false;
-                } else {
-                    // Random obstacles
-                    if (Math.random() < 0.1) {
-                        type = TileType.WALL;
-                        walkable = false;
-                    }
-                }
-
                 tiles[x][y] = {
                     x,
                     y,
-                    type,
-                    walkable
+                    type: defaultType,
+                    walkable: defaultWalkable
                 };
+            }
+        }
+
+        // Apply regions
+        for (const region of mapData.tiles.regions) {
+            const regionType = getTileType(region.type);
+            const { x: startX, y: startY, width: w, height: h } = region.area;
+
+            for (let dx = 0; dx < w; dx++) {
+                for (let dy = 0; dy < h; dy++) {
+                    const x = startX + dx;
+                    const y = startY + dy;
+
+                    if (x >= 0 && x < width && y >= 0 && y < height) {
+                        tiles[x][y] = {
+                            x,
+                            y,
+                            type: regionType,
+                            walkable: region.walkable
+                        };
+                    }
+                }
             }
         }
 
@@ -44,6 +69,10 @@ export class WorldManager {
             height,
             tiles
         };
+    }
+
+    public getMapData(): MapData {
+        return this.mapData;
     }
 
     public getMap(): WorldMap {

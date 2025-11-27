@@ -7,7 +7,9 @@ import { EVENTS, MonsterStrategyType } from '@vibemaster/shared';
 import { WorldManager } from './managers/WorldManager.js';
 import { EntityManager } from './managers/EntityManager.js';
 import { MonsterDatabase } from './managers/MonsterDatabase.js';
+import { SkillDatabase } from './managers/SkillDatabase.js';
 import { GameLoop } from './GameLoop.js';
+import { MapLoader } from './utils/MapLoader.js';
 
 const app = express();
 app.use(cors());
@@ -20,45 +22,42 @@ const io = new Server(httpServer, {
     }
 });
 
-const worldManager = new WorldManager();
+const worldManager = new WorldManager('01_starting_zone');
 const entityManager = new EntityManager();
 const monsterDatabase = new MonsterDatabase();
+const skillDatabase = new SkillDatabase();
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
-// Spawn some random items
-for (let i = 0; i < 10; i++) {
-    const item: any = {
-        id: `item_${i}`,
-        type: 'item',
-        name: 'Health Potion',
-        description: 'Restores 50 HP',
-        icon: '🧪',
-        position: {
-            x: Math.floor(Math.random() * 40) + 5,
-            y: Math.floor(Math.random() * 40) + 5
-        }
-    };
-    entityManager.addItem(item);
-}
+// Get map data for spawning
+const mapData = worldManager.getMapData();
 
-// Spawn monsters from database
-for (let i = 0; i < 10; i++) {
-    const template = monsterDatabase.getRandomTemplate();
-    if (template) {
-        const monster = entityManager.addMonster(
-            `monster_${i}`,
-            template.name,
-            Math.floor(Math.random() * 40) + 5,
-            Math.floor(Math.random() * 40) + 5,
-            {
-                hp: template.hp,
-                level: template.baseLevel,
-                strategy: MonsterStrategyType.PASSIVE
-            }
-        );
-        console.log(`Spawned ${monster.name} (Level ${monster.level}) at (${monster.position.x}, ${monster.position.y})`);
+// Spawn monsters from map data
+console.log(`\n🗺️  Spawning entities from map: ${mapData.name}`);
+for (const monsterSpawn of mapData.monsterSpawns) {
+    const monster = entityManager.spawnMonsterFromTemplate(
+        monsterSpawn.monsterId,
+        monsterSpawn.position
+    );
+    if (monster) {
+        console.log(`  ✓ ${monster.name} spawned at (${monster.position.x}, ${monster.position.y})`);
     }
 }
+
+// Spawn items from map data (for now, just log them since we need item templates)
+for (const itemSpawn of mapData.itemSpawns) {
+    const item: any = {
+        id: `item_${itemSpawn.itemId}_${Date.now()}`,
+        type: 'item',
+        name: 'Health Potion', // TODO: Load from item database
+        description: 'Restores 50 HP',
+        icon: '🧪',
+        position: itemSpawn.position
+    };
+    entityManager.addItem(item);
+    console.log(`  ✓ ${item.name} spawned at (${item.position.x}, ${item.position.y})`);
+}
+
+console.log(`\n✅ Map loaded with ${mapData.monsterSpawns.length} monsters and ${mapData.itemSpawns.length} items\n`);
 
 gameLoop.start();
 
@@ -66,7 +65,13 @@ io.on('connection', (socket) => {
     try {
         console.log('User connected:', socket.id);
 
-        const player = entityManager.addPlayer(socket.id, `Player ${socket.id.substring(0, 4)}`);
+        // Get a random spawn point from the map
+        const spawnPoint = MapLoader.getRandomSpawnPoint(mapData, 'player');
+        const player = entityManager.addPlayer(
+            socket.id,
+            `Player ${socket.id.substring(0, 4)}`,
+            spawnPoint
+        );
 
         socket.emit(EVENTS.WELCOME, { message: 'Welcome to VibeMaster!', playerId: socket.id });
         socket.emit(EVENTS.MAP_DATA, worldManager.getMap());

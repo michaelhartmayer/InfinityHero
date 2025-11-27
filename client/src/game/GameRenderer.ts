@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three-stdlib';
 import { type WorldMap, TileType, type Player, type Item, type Monster } from '@vibemaster/shared';
 import { VFXLibrary } from '../vfx/VFXLibrary';
+import { CursorGroundEffect } from '../vfx/effects/CursorGroundEffect';
+import { TilesetLoader } from './TilesetLoader';
 
 export class GameRenderer {
     private scene: THREE.Scene;
@@ -26,6 +28,11 @@ export class GameRenderer {
     private highlightMesh: THREE.LineSegments;
     private labelRenderer: CSS2DRenderer;
     private vfxLibrary: VFXLibrary;
+    private cursorGroundEffect: CursorGroundEffect;
+    private cursorPosition: { x: number, y: number } | null = null;
+    private tilesetLoader: TilesetLoader;
+    private tilesetsLoaded: boolean = false;
+    private currentMapData: WorldMap | null = null;
 
     constructor(canvas: HTMLCanvasElement, localPlayerId: string | null) {
         this.localPlayerId = localPlayerId;
@@ -92,18 +99,55 @@ export class GameRenderer {
 
         this.vfxLibrary = new VFXLibrary(this.renderer, this.scene, this.camera);
 
+        // Cursor ground effect
+        this.cursorGroundEffect = new CursorGroundEffect();
+        this.scene.add(this.cursorGroundEffect.group);
+
+        // Initialize tileset loader
+        this.tilesetLoader = new TilesetLoader();
+        this.loadTilesets();
+
         this.animate();
+    }
+
+    private async loadTilesets() {
+        await Promise.all([
+            this.tilesetLoader.loadTileset(
+                'grass',
+                '/assets/tilesets/dev-tileset-grass.json',
+                '/assets/tilesets/dev-tileset-grass.png'
+            ),
+            this.tilesetLoader.loadTileset(
+                'stone',
+                '/assets/tilesets/dev-tileset-stone.json',
+                '/assets/tilesets/dev-tileset-stone.png'
+            )
+        ]);
+        this.tilesetsLoaded = true;
+        console.log('✅ Tilesets loaded successfully');
+
+        // Re-render map if it was already loaded
+        if (this.currentMapData) {
+            console.log('🔄 Re-rendering map with loaded tilesets');
+            this.renderMap(this.currentMapData);
+        }
     }
 
     public setHighlight(x: number, y: number, map: WorldMap) {
         const offsetX = map.width / 2;
         const offsetY = map.height / 2;
-        this.highlightMesh.position.set(x - offsetX, y - offsetY, 0.1);
+        const worldX = x - offsetX;
+        const worldY = y - offsetY;
+
+        this.highlightMesh.position.set(worldX, worldY, 0.1);
         this.highlightMesh.visible = true;
 
         // Pulse effect
         const scale = 1 + Math.sin(Date.now() * 0.01) * 0.05;
         this.highlightMesh.scale.set(scale, scale, 1);
+
+        // Store position for animation loop
+        this.cursorPosition = { x: worldX, y: worldY };
     }
 
     public selectMonster(monsterId: string | null, monsters: Record<string, Monster>, map: WorldMap) {
@@ -181,8 +225,73 @@ export class GameRenderer {
     }
 
     public renderMap(map: WorldMap) {
+        this.currentMapData = map; // Store for re-rendering after tilesets load
         this.mapGroup.clear();
 
+        const grassTexture = this.tilesetLoader.getTexture('grass');
+        const stoneTexture = this.tilesetLoader.getTexture('stone');
+
+        if (!grassTexture || !stoneTexture) {
+            console.warn('⚠️ Tilesets not loaded yet, using fallback colors');
+            this.renderMapFallback(map);
+            return;
+        }
+
+        console.log('🎨 Rendering map with textured tilesets');
+
+        const offsetX = map.width / 2;
+        const offsetY = map.height / 2;
+
+        for (let x = 0; x < map.width; x++) {
+            for (let y = 0; y < map.height; y++) {
+                const tile = map.tiles[x][y];
+
+                // Determine which tileset to use
+                let texture: THREE.Texture;
+                let tilesetName: string;
+
+                switch (tile.type) {
+                    case TileType.GRASS:
+                    case TileType.FLOOR:
+                        texture = grassTexture;
+                        tilesetName = 'grass';
+                        break;
+                    case TileType.WALL:
+                    case TileType.WATER:
+                        texture = stoneTexture;
+                        tilesetName = 'stone';
+                        break;
+                    default:
+                        texture = grassTexture;
+                        tilesetName = 'grass';
+                }
+
+                // Get a random tile variant for variety
+                const randomTile = this.tilesetLoader.getRandomTile(tilesetName);
+                if (!randomTile) continue;
+
+                // Create geometry with custom UVs
+                const geometry = new THREE.PlaneGeometry(1, 1);
+                const uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id);
+
+                if (uvs) {
+                    const uvAttribute = new THREE.Float32BufferAttribute(uvs, 2);
+                    geometry.setAttribute('uv', uvAttribute);
+                }
+
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    side: THREE.FrontSide
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x - offsetX, y - offsetY, 0);
+                this.mapGroup.add(mesh);
+            }
+        }
+    }
+
+    private renderMapFallback(map: WorldMap) {
         const geometry = new THREE.PlaneGeometry(1, 1);
         const materials = {
             [TileType.GRASS]: new THREE.MeshStandardMaterial({ color: 0x4caf50 }),
@@ -484,6 +593,11 @@ export class GameRenderer {
         if (this.highlightMesh.visible) {
             const scale = 1 + Math.sin(Date.now() * 0.005) * 0.05;
             this.highlightMesh.scale.set(scale, scale, 1);
+        }
+
+        // Animate cursor effect
+        if (this.cursorPosition) {
+            this.cursorGroundEffect.update(this.cursorPosition.x, this.cursorPosition.y, true);
         }
 
         // Animate selection

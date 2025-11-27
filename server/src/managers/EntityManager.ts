@@ -1,16 +1,22 @@
 import { Player, Position, CONSTANTS, Item, Monster, MonsterStrategyType } from '@vibemaster/shared';
+import { MonsterLoader } from '../utils/MonsterLoader.js';
 
 export class EntityManager {
     private players: Record<string, Player> = {};
     private items: Record<string, Item> = {};
     private monsters: Record<string, Monster> = {};
 
-    public addPlayer(id: string, name: string): Player {
+    constructor() {
+        // Load monster database on initialization
+        MonsterLoader.loadDatabase();
+    }
+
+    public addPlayer(id: string, name: string, spawnPosition?: Position): Player {
         const player: Player = {
             id,
             type: 'player',
             name,
-            position: {
+            position: spawnPosition || {
                 x: Math.floor(Math.random() * 40) + 5,
                 y: Math.floor(Math.random() * 40) + 5
             },
@@ -72,6 +78,33 @@ export class EntityManager {
         return false;
     }
 
+    public spawnMonsterFromTemplate(monsterId: string, position: Position): Monster | null {
+        const template = MonsterLoader.getMonster(monsterId);
+        if (!template) {
+            console.error(`Monster template not found: ${monsterId}`);
+            return null;
+        }
+
+        const id = `monster_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const monster: Monster = {
+            id,
+            type: 'monster',
+            name: template.name,
+            position,
+            hp: template.hp,
+            maxHp: template.hp,
+            level: template.baseLevel,
+            targetId: null,
+            strategy: MonsterStrategyType.PASSIVE, // Default, can be changed based on template
+            lastActionTime: Date.now(),
+            moveTarget: null,
+            movePath: []
+        };
+
+        this.monsters[id] = monster;
+        console.log(`🐉 Spawned ${template.name} at (${position.x}, ${position.y})`);
+        return monster;
+    }
 
     public addMonster(
         id: string,

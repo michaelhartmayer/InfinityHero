@@ -1,0 +1,12 @@
+{
+    "skills": [
+        {
+            "id": "melee",
+            "name": "Melee",
+            "description": "A basic melee attack.",
+            "range": 1,
+            "icon": "sword",
+            "target": "target"
+        }
+    ]
+}
