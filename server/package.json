@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "npx tsc -w",
+    "dev": "nodemon --watch src --exec tsx src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -23,7 +23,9 @@
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
     "@types/socket.io": "^3.0.2",
+    "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3"
   }
 }
