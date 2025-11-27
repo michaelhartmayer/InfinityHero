@@ -1,0 +1,154 @@
+{
+    "monsters": [
+        {
+            "id": "slime_green",
+            "name": "Green Slime",
+            "baseLevel": 1,
+            "hp": 50,
+            "energy": 30,
+            "passiveStrategy": "wander",
+            "attackStrategy": "melee_basic",
+            "fleeStrategy": "low_hp"
+        },
+        {
+            "id": "slime_blue",
+            "name": "Blue Slime",
+            "baseLevel": 2,
+            "hp": 75,
+            "energy": 40,
+            "passiveStrategy": "wander",
+            "attackStrategy": "melee_basic",
+            "fleeStrategy": "low_hp"
+        },
+        {
+            "id": "goblin_scout",
+            "name": "Goblin Scout",
+            "baseLevel": 3,
+            "hp": 100,
+            "energy": 50,
+            "passiveStrategy": "patrol",
+            "attackStrategy": "melee_aggressive",
+            "fleeStrategy": "critical_hp"
+        },
+        {
+            "id": "goblin_warrior",
+            "name": "Goblin Warrior",
+            "baseLevel": 5,
+            "hp": 150,
+            "energy": 60,
+            "passiveStrategy": "guard",
+            "attackStrategy": "melee_aggressive",
+            "fleeStrategy": "never"
+        },
+        {
+            "id": "wolf_gray",
+            "name": "Gray Wolf",
+            "baseLevel": 4,
+            "hp": 120,
+            "energy": 70,
+            "passiveStrategy": "hunt",
+            "attackStrategy": "melee_pack",
+            "fleeStrategy": "low_hp"
+        },
+        {
+            "id": "wolf_dire",
+            "name": "Dire Wolf",
+            "baseLevel": 7,
+            "hp": 200,
+            "energy": 90,
+            "passiveStrategy": "hunt",
+            "attackStrategy": "melee_pack",
+            "fleeStrategy": "critical_hp"
+        },
+        {
+            "id": "skeleton",
+            "name": "Skeleton",
+            "baseLevel": 6,
+            "hp": 130,
+            "energy": 40,
+            "passiveStrategy": "wander",
+            "attackStrategy": "melee_basic",
+            "fleeStrategy": "never"
+        },
+        {
+            "id": "zombie",
+            "name": "Zombie",
+            "baseLevel": 5,
+            "hp": 180,
+            "energy": 30,
+            "passiveStrategy": "wander",
+            "attackStrategy": "melee_slow",
+            "fleeStrategy": "never"
+        },
+        {
+            "id": "spider_small",
+            "name": "Small Spider",
+            "baseLevel": 2,
+            "hp": 60,
+            "energy": 50,
+            "passiveStrategy": "ambush",
+            "attackStrategy": "melee_poison",
+            "fleeStrategy": "low_hp"
+        },
+        {
+            "id": "spider_giant",
+            "name": "Giant Spider",
+            "baseLevel": 8,
+            "hp": 250,
+            "energy": 80,
+            "passiveStrategy": "ambush",
+            "attackStrategy": "melee_poison",
+            "fleeStrategy": "critical_hp"
+        },
+        {
+            "id": "bat_cave",
+            "name": "Cave Bat",
+            "baseLevel": 3,
+            "hp": 40,
+            "energy": 60,
+            "passiveStrategy": "fly_circle",
+            "attackStrategy": "melee_swarm",
+            "fleeStrategy": "low_hp"
+        },
+        {
+            "id": "orc_grunt",
+            "name": "Orc Grunt",
+            "baseLevel": 10,
+            "hp": 300,
+            "energy": 100,
+            "passiveStrategy": "patrol",
+            "attackStrategy": "melee_aggressive",
+            "fleeStrategy": "critical_hp"
+        },
+        {
+            "id": "orc_shaman",
+            "name": "Orc Shaman",
+            "baseLevel": 12,
+            "hp": 200,
+            "energy": 150,
+            "passiveStrategy": "support",
+            "attackStrategy": "ranged_magic",
+            "fleeStrategy": "low_hp"
+        },
+        {
+            "id": "troll",
+            "name": "Troll",
+            "baseLevel": 15,
+            "hp": 500,
+            "energy": 120,
+            "passiveStrategy": "guard",
+            "attackStrategy": "melee_regenerate",
+            "fleeStrategy": "critical_hp"
+        },
+        {
+            "id": "dragon_whelp",
+            "name": "Dragon Whelp",
+            "baseLevel": 20,
+            "hp": 800,
+            "energy": 200,
+            "passiveStrategy": "fly_circle",
+            "attackStrategy": "ranged_fire",
+            "fleeStrategy": "low_hp"
+        }
+    ]
+}

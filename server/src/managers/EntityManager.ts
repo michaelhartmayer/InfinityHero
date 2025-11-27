@@ -64,17 +64,24 @@ export class EntityManager {
         }
     }
 
-    public addMonster(id: string, name: string, x: number, y: number): Monster {
+    public addMonster(
+        id: string,
+        name: string,
+        x: number,
+        y: number,
+        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType }
+    ): Monster {
+        const hp = template?.hp || 50;
         const monster: Monster = {
             id,
             type: 'monster',
             name,
             position: { x, y },
-            hp: 50,
-            maxHp: 50,
-            level: 1,
+            hp,
+            maxHp: hp,
+            level: template?.level || 1,
             targetId: null,
-            strategy: MonsterStrategyType.PASSIVE, // Default to passive
+            strategy: template?.strategy || MonsterStrategyType.PASSIVE,
             lastActionTime: Date.now(),
             moveTarget: null,
             movePath: []

@@ -6,6 +6,7 @@ import { EVENTS, MonsterStrategyType } from '@vibemaster/shared';
 
 import { WorldManager } from './managers/WorldManager.js';
 import { EntityManager } from './managers/EntityManager.js';
+import { MonsterDatabase } from './managers/MonsterDatabase.js';
 import { GameLoop } from './GameLoop.js';
 
 const app = express();
@@ -21,6 +22,7 @@ const io = new Server(httpServer, {
 
 const worldManager = new WorldManager();
 const entityManager = new EntityManager();
+const monsterDatabase = new MonsterDatabase();
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
 // Spawn some random items
@@ -39,16 +41,23 @@ for (let i = 0; i < 10; i++) {
     entityManager.addItem(item);
 }
 
-// Spawn some random monsters
-// Spawn some random monsters
+// Spawn monsters from database
 for (let i = 0; i < 10; i++) {
-    const monster = entityManager.addMonster(
-        `monster_${i}`,
-        'Goblin',
-        Math.floor(Math.random() * 40) + 5,
-        Math.floor(Math.random() * 40) + 5
-    );
-    monster.strategy = MonsterStrategyType.PASSIVE;
+    const template = monsterDatabase.getRandomTemplate();
+    if (template) {
+        const monster = entityManager.addMonster(
+            `monster_${i}`,
+            template.name,
+            Math.floor(Math.random() * 40) + 5,
+            Math.floor(Math.random() * 40) + 5,
+            {
+                hp: template.hp,
+                level: template.baseLevel,
+                strategy: MonsterStrategyType.PASSIVE
+            }
+        );
+        console.log(`Spawned ${monster.name} (Level ${monster.level}) at (${monster.position.x}, ${monster.position.y})`);
+    }
 }
 
 gameLoop.start();
