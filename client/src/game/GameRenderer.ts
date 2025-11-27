@@ -23,6 +23,10 @@ export class GameRenderer {
     private selectedMonsterId: string | null = null;
     private selectionMesh: THREE.Mesh;
 
+    // Interpolation targets
+    private playerTargets: Map<string, { x: number, y: number }> = new Map();
+    private monsterTargets: Map<string, { x: number, y: number }> = new Map();
+
     private chatBubbles: Map<string, { element: CSS2DObject, startTime: number, duration: number }> = new Map();
 
     private highlightMesh: THREE.LineSegments;
@@ -33,6 +37,8 @@ export class GameRenderer {
     private tilesetLoader: TilesetLoader;
     private tilesetsLoaded: boolean = false;
     private currentMapData: WorldMap | null = null;
+    private lastFrameTime: number = 0;
+    private shadowTexture: THREE.Texture;
 
     constructor(canvas: HTMLCanvasElement, localPlayerId: string | null) {
         this.localPlayerId = localPlayerId;
@@ -107,7 +113,28 @@ export class GameRenderer {
         this.tilesetLoader = new TilesetLoader();
         this.loadTilesets();
 
-        this.animate();
+        // Create shadow texture
+        this.shadowTexture = this.createShadowTexture();
+
+        requestAnimationFrame(this.animate);
+    }
+
+    private createShadowTexture(): THREE.Texture {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d')!;
+
+        const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)'); // Darker center
+        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 64, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        return texture;
     }
 
     private async loadTilesets() {
@@ -324,13 +351,9 @@ export class GameRenderer {
             if (!activeIds.has(id)) {
                 this.playersGroup.remove(mesh);
                 this.playerMeshes.delete(id);
+                this.playerTargets.delete(id);
                 this.chatBubbles.delete(id);
             }
-        }
-
-        let localPlayer: Player | null = null;
-        if (this.localPlayerId && players[this.localPlayerId]) {
-            localPlayer = players[this.localPlayerId];
         }
 
         for (const player of Object.values(players)) {
@@ -375,11 +398,24 @@ export class GameRenderer {
                     mesh.add(ring);
                 }
 
+                // Add Shadow
+                const shadowGeo = new THREE.PlaneGeometry(1.2, 0.6); // Squashed vertically
+                const shadowMat = new THREE.MeshBasicMaterial({
+                    map: this.shadowTexture,
+                    transparent: true,
+                    depthWrite: false,
+                    opacity: 0.8
+                });
+                const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+                // No rotation needed for 2D top-down (XY plane)
+                shadow.position.y = -0.4; // At the feet (South)
+                shadow.position.z = -0.35; // Behind player, just above map (World Z ~ 0.05)
+                mesh.add(shadow);
+
                 // Add Name Label
                 const div = document.createElement('div');
                 div.className = 'player-label';
                 div.textContent = player.name;
-
                 const label = new CSS2DObject(div);
                 label.position.set(0, 1.5, 0); // Above head
                 mesh.add(label);
@@ -388,24 +424,29 @@ export class GameRenderer {
                 this.playerMeshes.set(player.id, mesh);
             }
 
-            // Smooth interpolation for player movement
+            // Update target position for interpolation
             const targetX = player.position.x - offsetX;
             const targetY = player.position.y - offsetY;
 
-            // If distance is large (teleport), snap immediately
-            // Otherwise interpolate smoothly
-            const dist = Math.sqrt(
-                Math.pow(mesh.position.x - targetX, 2) +
-                Math.pow(mesh.position.y - targetY, 2)
-            );
-
-            if (dist > 5) {
+            // If this is a new player or distance is large (teleport), snap immediately
+            if (!this.playerTargets.has(player.id)) {
                 mesh.position.set(targetX, targetY, 0.4);
+                this.playerTargets.set(player.id, { x: targetX, y: targetY });
             } else {
-                // Lerp factor of 0.3 gives smooth but responsive movement
-                mesh.position.x += (targetX - mesh.position.x) * 0.3;
-                mesh.position.y += (targetY - mesh.position.y) * 0.3;
-                mesh.position.z = 0.4;
+                const currentTarget = this.playerTargets.get(player.id)!;
+                const dist = Math.sqrt(
+                    Math.pow(currentTarget.x - targetX, 2) +
+                    Math.pow(currentTarget.y - targetY, 2)
+                );
+
+                if (dist > 5) {
+                    // Teleport
+                    mesh.position.set(targetX, targetY, 0.4);
+                    this.playerTargets.set(player.id, { x: targetX, y: targetY });
+                } else {
+                    // Update target for smooth interpolation in animate loop
+                    this.playerTargets.set(player.id, { x: targetX, y: targetY });
+                }
             }
 
             // Update player name label if it changed
@@ -435,14 +476,17 @@ export class GameRenderer {
             healthBar.scale.setX(healthPercent);
         }
 
+        // Camera update is now handled in animate loop for smoother tracking
+        /*
         if (localPlayer) {
             const targetX = localPlayer.position.x - offsetX;
             const targetY = localPlayer.position.y - offsetY;
-
+    
             const lerpFactor = 0.1;
             this.camera.position.x += (targetX - this.camera.position.x) * lerpFactor;
             this.camera.position.y += (targetY - this.camera.position.y) * lerpFactor;
         }
+        */
     }
 
     public updateItems(items: Record<string, Item>, mapData: WorldMap) {
@@ -477,6 +521,7 @@ export class GameRenderer {
                 if (label) mesh.remove(label); // Cleanup label
                 this.monstersGroup.remove(mesh);
                 this.monsterMeshes.delete(id);
+                this.monsterTargets.delete(id);
 
                 if (this.selectedMonsterId === id) {
                     this.selectMonster(null, monsters, mapData);
@@ -493,6 +538,19 @@ export class GameRenderer {
                 const geometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
                 const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
                 mesh = new THREE.Mesh(geometry, material);
+
+                // Add Shadow
+                const shadowGeo = new THREE.PlaneGeometry(1.0, 0.5); // Squashed vertically
+                const shadowMat = new THREE.MeshBasicMaterial({
+                    map: this.shadowTexture,
+                    transparent: true,
+                    depthWrite: false,
+                    opacity: 0.8
+                });
+                const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+                shadow.position.y = -0.3; // At the feet (South)
+                shadow.position.z = -0.25; // Behind monster
+                mesh.add(shadow);
 
                 const bgGeo = new THREE.PlaneGeometry(0.6, 0.1);
                 const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
@@ -529,7 +587,27 @@ export class GameRenderer {
                 this.monsterMeshes.set(monster.id, mesh);
             }
 
-            mesh.position.set(monster.position.x - offsetX, monster.position.y - offsetY, 0.3);
+            // Update target position for interpolation
+            const targetX = monster.position.x - offsetX;
+            const targetY = monster.position.y - offsetY;
+
+            if (!this.monsterTargets.has(monster.id)) {
+                mesh.position.set(targetX, targetY, 0.3);
+                this.monsterTargets.set(monster.id, { x: targetX, y: targetY });
+            } else {
+                const currentTarget = this.monsterTargets.get(monster.id)!;
+                const dist = Math.sqrt(
+                    Math.pow(currentTarget.x - targetX, 2) +
+                    Math.pow(currentTarget.y - targetY, 2)
+                );
+
+                if (dist > 5) {
+                    mesh.position.set(targetX, targetY, 0.3);
+                    this.monsterTargets.set(monster.id, { x: targetX, y: targetY });
+                } else {
+                    this.monsterTargets.set(monster.id, { x: targetX, y: targetY });
+                }
+            }
 
             const healthBar = mesh.getObjectByName('healthBar') as THREE.Mesh;
             if (healthBar) {
@@ -586,8 +664,11 @@ export class GameRenderer {
         this.vfxLibrary.resize(width, height);
     }
 
-    private animate = () => {
+    private animate = (time: number) => {
         requestAnimationFrame(this.animate);
+
+        const dt = Math.min((time - this.lastFrameTime) / 1000, 0.1); // Clamp dt to 100ms
+        this.lastFrameTime = time;
 
         // Animate highlight
         if (this.highlightMesh.visible) {
@@ -605,6 +686,42 @@ export class GameRenderer {
             this.selectionMesh.rotation.z += 0.02;
         }
 
+        // Interpolate Players
+        // Use a time-based lerp for frame-rate independence
+        // factor = 1 - exp(-speed * dt)
+        // Speed of 20 gives a quick but smooth response
+        const entityLerpFactor = 1 - Math.exp(-20 * dt);
+
+        for (const [id, mesh] of this.playerMeshes) {
+            const target = this.playerTargets.get(id);
+            if (target) {
+                mesh.position.x += (target.x - mesh.position.x) * entityLerpFactor;
+                mesh.position.y += (target.y - mesh.position.y) * entityLerpFactor;
+
+                // Update camera if local player
+                if (id === this.localPlayerId) {
+                    // Camera follows slightly smoother/slower than the player to avoid jitter
+                    const cameraLerpFactor = 1 - Math.exp(-5 * dt);
+                    this.camera.position.x += (mesh.position.x - this.camera.position.x) * cameraLerpFactor;
+                    this.camera.position.y += (mesh.position.y - this.camera.position.y) * cameraLerpFactor;
+                }
+            }
+        }
+
+        // Interpolate Monsters
+        for (const [id, mesh] of this.monsterMeshes) {
+            const target = this.monsterTargets.get(id);
+            if (target) {
+                mesh.position.x += (target.x - mesh.position.x) * entityLerpFactor;
+                mesh.position.y += (target.y - mesh.position.y) * entityLerpFactor;
+
+                // Update selection mesh if this is the selected monster
+                if (this.selectedMonsterId === id) {
+                    this.selectionMesh.position.set(mesh.position.x, mesh.position.y, 0.1);
+                }
+            }
+        }
+
         // Check bubbles
         const now = Date.now();
         for (const [id, bubble] of this.chatBubbles) {
@@ -617,7 +734,7 @@ export class GameRenderer {
             }
         }
 
-        this.vfxLibrary.render(0.016);
+        this.vfxLibrary.render(dt);
         this.labelRenderer.render(this.scene, this.camera);
     }
 }
