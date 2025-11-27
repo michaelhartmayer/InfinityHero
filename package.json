@@ -2,7 +2,10 @@
     "name": "vibemaster-root",
     "private": true,
     "scripts": {
-        "dev": "concurrently \"npm run dev --prefix shared\" \"npm run dev --prefix server\" \"npm run dev --prefix client\""
+        "dev": "concurrently \"npm run dev --prefix shared\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+        "restart:client": "npx kill-port 5173 && npm run dev --prefix client",
+        "restart:server": "npx kill-port 3000 && npm run dev --prefix server",
+        "restart": "npx kill-port 3000 5173 && npm run dev"
     },
     "devDependencies": {
         "concurrently": "^9.1.0"

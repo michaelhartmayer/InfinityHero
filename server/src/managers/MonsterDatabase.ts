@@ -58,4 +58,26 @@ export class MonsterDatabase {
             t => t.baseLevel >= minLevel && t.baseLevel <= maxLevel
         );
     }
+    public updateTemplate(template: MonsterTemplate) {
+        this.templates.set(template.id, template);
+        this.saveDatabase();
+    }
+
+    public deleteTemplate(id: string) {
+        this.templates.delete(id);
+        this.saveDatabase();
+    }
+
+    private saveDatabase() {
+        try {
+            const dbPath = path.join(__dirname, '../../../databases/monsters.json');
+            const data = {
+                monsters: Array.from(this.templates.values())
+            };
+            fs.writeFileSync(dbPath, JSON.stringify(data, null, 4));
+            console.log('Saved monster database');
+        } catch (error) {
+            console.error('Failed to save monster database:', error);
+        }
+    }
 }

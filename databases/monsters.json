@@ -3,7 +3,7 @@
         {
             "id": "slime_green",
             "name": "Green Slime",
-            "baseLevel": 1,
+            "baseLevel": 2,
             "hp": 50,
             "energy": 30,
             "passiveStrategy": "wander",

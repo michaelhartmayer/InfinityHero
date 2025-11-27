@@ -44,4 +44,26 @@ export class SkillDatabase {
     public getAllTemplates(): SkillTemplate[] {
         return Array.from(this.templates.values());
     }
+    public updateTemplate(template: SkillTemplate) {
+        this.templates.set(template.id, template);
+        this.saveDatabase();
+    }
+
+    public deleteTemplate(id: string) {
+        this.templates.delete(id);
+        this.saveDatabase();
+    }
+
+    private saveDatabase() {
+        try {
+            const dbPath = path.join(__dirname, '../../../databases/skills.json');
+            const data = {
+                skills: Array.from(this.templates.values())
+            };
+            fs.writeFileSync(dbPath, JSON.stringify(data, null, 4));
+            console.log('Saved skill database');
+        } catch (error) {
+            console.error('Failed to save skill database:', error);
+        }
+    }
 }

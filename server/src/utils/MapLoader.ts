@@ -102,6 +102,21 @@ export class MapLoader {
         };
     }
 
+    static saveMap(mapData: MapData): void {
+        const mapId = mapData.id;
+        const mapPath = path.join(__dirname, '..', '..', '..', 'databases', 'maps', `${mapId}.json`);
+
+        try {
+            fs.writeFileSync(mapPath, JSON.stringify(mapData, null, 4));
+            // Update cache
+            this.mapsCache.set(mapId, mapData);
+            console.log(`Saved map: ${mapData.name}`);
+        } catch (error) {
+            console.error(`Failed to save map ${mapId}:`, error);
+            throw error;
+        }
+    }
+
     static clearCache(): void {
         this.mapsCache.clear();
     }

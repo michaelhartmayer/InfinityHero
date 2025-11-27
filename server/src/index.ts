@@ -13,6 +13,50 @@ import { MapLoader } from './utils/MapLoader.js';
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.get('/api/monsters', (req, res) => {
+    res.json(monsterDatabase.getAllTemplates());
+});
+
+app.post('/api/monsters', (req, res) => {
+    const template = req.body;
+    monsterDatabase.updateTemplate(template);
+    res.json({ success: true });
+});
+
+app.delete('/api/monsters/:id', (req, res) => {
+    const { id } = req.params;
+    monsterDatabase.deleteTemplate(id);
+    res.json({ success: true });
+});
+
+app.get('/api/skills', (req, res) => {
+    res.json(skillDatabase.getAllTemplates());
+});
+
+app.post('/api/skills', (req, res) => {
+    const template = req.body;
+    skillDatabase.updateTemplate(template);
+    res.json({ success: true });
+});
+
+app.delete('/api/skills/:id', (req, res) => {
+    const { id } = req.params;
+    skillDatabase.deleteTemplate(id);
+    res.json({ success: true });
+});
+
+app.get('/api/map', (req, res) => {
+    res.json(worldManager.getMapData());
+});
+
+app.post('/api/map', (req, res) => {
+    const mapData = req.body;
+    MapLoader.saveMap(mapData);
+    res.json({ success: true });
+});
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
