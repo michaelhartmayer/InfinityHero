@@ -27,6 +27,11 @@ function App() {
 
     newSocket.on('connect', () => {
       console.log('Connected to server');
+      const savedAlias = localStorage.getItem('player_alias');
+      if (savedAlias) {
+        console.log('Restoring saved alias:', savedAlias);
+        newSocket.emit(EVENTS.CHAT_MESSAGE, `/alias ${savedAlias}`);
+      }
     });
 
     newSocket.on('disconnect', () => {
@@ -205,6 +210,15 @@ function App() {
       setMessages((prev) => [...prev, helpMessage]);
       setIsChatMode(false);
       return;
+    }
+
+    // Save alias to local storage if command is used
+    if (message.trim().toLowerCase().startsWith('/alias ')) {
+      const parts = message.trim().split(' ');
+      if (parts.length > 1) {
+        const newName = parts.slice(1).join(' ').substring(0, 20);
+        localStorage.setItem('player_alias', newName);
+      }
     }
 
     if (socket) {
