@@ -12,6 +12,7 @@ import { GameLoop } from './GameLoop.js';
 import { SpriteDatabase } from './managers/SpriteDatabase.js';
 import { MapLoader } from './utils/MapLoader.js';
 import { SwatchLoader } from './utils/SwatchLoader.js';
+import { ClassDatabase } from './managers/ClassDatabase.js';
 
 const app = express();
 app.use(cors());
@@ -63,6 +64,22 @@ app.post('/api/sprites', (req, res) => {
 app.delete('/api/sprites/:id', (req, res) => {
     const { id } = req.params;
     spriteDatabase.deleteTemplate(id);
+    res.json({ success: true });
+});
+
+app.get('/api/classes', (req, res) => {
+    res.json(classDatabase.getAllTemplates());
+});
+
+app.post('/api/classes', (req, res) => {
+    const template = req.body;
+    classDatabase.updateTemplate(template);
+    res.json({ success: true });
+});
+
+app.delete('/api/classes/:id', (req, res) => {
+    const { id } = req.params;
+    classDatabase.deleteTemplate(id);
     res.json({ success: true });
 });
 
@@ -263,6 +280,7 @@ const entityManager = new EntityManager();
 const monsterDatabase = new MonsterDatabase();
 const skillDatabase = new SkillDatabase();
 const spriteDatabase = new SpriteDatabase();
+const classDatabase = new ClassDatabase();
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
 // Get map data for spawning

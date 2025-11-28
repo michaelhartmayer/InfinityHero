@@ -37,6 +37,16 @@ interface Sprite {
     }>;
 }
 
+interface Class {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    baseHp: number;
+    baseEnergy: number;
+    startingSkills: string[];
+}
+
 interface MapData {
     id: string;
     name: string;
@@ -328,26 +338,14 @@ const MonsterForm = () => {
     useEffect(() => {
         if (!isNew && id) {
             // Fetch specific monster
-            fetch(`http://localhost:3000/api/monsters/${id}`) // Assuming this endpoint exists or we fetch all and find
+            // Fetch all monsters and find the one we need
+            fetch('http://localhost:3000/api/monsters')
                 .then(res => res.json())
-                .then(data => {
-                    // If the API returns the specific monster, great. If it returns all, we filter.
-                    // The original code fetched all. Let's assume we can fetch all and find for now to be safe,
-                    // or better, let's assume the API supports get by ID or we just fetch all.
-                    // Actually, looking at handleDelete, it uses /api/monsters/${id}, so likely GET /api/monsters/${id} works?
-                    // If not, we might need to fetch all. Let's try fetch all and find to be safe if we are unsure,
-                    // but standard REST implies GET /:id.
-                    // Let's try to fetch all and find, to match previous behavior's reliability if we aren't sure about backend.
-                    // Wait, previous code: fetchMonsters() -> /api/monsters (GET).
-                    // handleDelete -> /api/monsters/${id} (DELETE).
-                    // Let's assume GET /api/monsters/${id} exists. If not, I'll fix it.
-                    // Actually, to be safe and consistent with previous code which only used fetchMonsters,
-                    // I will fetch all and find.
-                    return fetch('http://localhost:3000/api/monsters').then(r => r.json()).then((all: Monster[]) => {
-                        const found = all.find(m => m.id === id);
-                        if (found) setEditing(found);
-                    });
-                });
+                .then((all: Monster[]) => {
+                    const found = all.find(m => m.id === id);
+                    if (found) setEditing(found);
+                })
+                .catch(err => console.error("Failed to load monster:", err));
         } else {
             setEditing({
                 id: '', name: '', baseLevel: 1, hp: 100, energy: 100,
@@ -1843,6 +1841,173 @@ const SpriteEditor = () => {
     );
 };
 
+const ClassList = () => {
+    const [classes, setClasses] = useState<Class[]>([]);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchClasses();
+    }, []);
+
+    const fetchClasses = async () => {
+        const res = await fetch('http://localhost:3000/api/classes');
+        const data = await res.json();
+        setClasses(data);
+    };
+
+    return (
+        <div>
+            <div className="editor-header">
+                <h2 className="editor-title">Class Database</h2>
+                <button className="btn btn-primary" onClick={() => navigate('new')}>+ New Class</button>
+            </div>
+            <div className="card-grid">
+                {classes.map(c => (
+                    <div key={c.id} className="card" onClick={() => navigate(c.id)}>
+                        <h3>{c.name}</h3>
+                        <p>{c.description}</p>
+                        <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>HP: {c.baseHp} • Energy: {c.baseEnergy}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const ClassForm = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [editing, setEditing] = useState<Class | null>(null);
+    const [sprites, setSprites] = useState<Sprite[]>([]);
+    const [skills, setSkills] = useState<Skill[]>([]);
+    const isNew = !id;
+
+    useEffect(() => {
+        // Fetch dependencies
+        fetch('http://localhost:3000/api/sprites').then(r => r.json()).then(setSprites);
+        fetch('http://localhost:3000/api/skills').then(r => r.json()).then(setSkills);
+
+        if (!isNew && id) {
+            fetch('http://localhost:3000/api/classes')
+                .then(res => res.json())
+                .then((all: Class[]) => {
+                    const found = all.find(c => c.id === id);
+                    if (found) setEditing(found);
+                });
+        } else {
+            setEditing({
+                id: '', name: '', description: '', icon: '', baseHp: 100, baseEnergy: 50, startingSkills: []
+            });
+        }
+    }, [id, isNew]);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editing) return;
+
+        await fetch('http://localhost:3000/api/classes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editing)
+        });
+
+        navigate('..');
+    };
+
+    const handleDelete = async () => {
+        if (!editing || !confirm('Are you sure you want to delete this class?')) return;
+        await fetch(`http://localhost:3000/api/classes/${editing.id}`, { method: 'DELETE' });
+        navigate('..');
+    };
+
+    const toggleSkill = (skillId: string) => {
+        if (!editing) return;
+        const current = editing.startingSkills || [];
+        if (current.includes(skillId)) {
+            setEditing({ ...editing, startingSkills: current.filter(s => s !== skillId) });
+        } else {
+            setEditing({ ...editing, startingSkills: [...current, skillId] });
+        }
+    };
+
+    if (!editing) return <div>Loading...</div>;
+
+    return (
+        <div className="form-container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2>{isNew ? 'Create Class' : 'Edit Class'}</h2>
+                <button className="btn btn-secondary" onClick={() => navigate('..')}>Cancel</button>
+            </div>
+            <form onSubmit={handleSave}>
+                <div className="form-group">
+                    <label className="form-label">ID</label>
+                    <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Description</label>
+                    <textarea className="form-textarea" rows={3} value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} required />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Base HP</label>
+                        <input type="number" className="form-input" value={editing.baseHp} onChange={e => setEditing({ ...editing, baseHp: parseInt(e.target.value) })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Base Energy</label>
+                        <input type="number" className="form-input" value={editing.baseEnergy} onChange={e => setEditing({ ...editing, baseEnergy: parseInt(e.target.value) })} required />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Icon (Sprite)</label>
+                    <select className="form-select" value={editing.icon} onChange={e => setEditing({ ...editing, icon: e.target.value })}>
+                        <option value="">Select a sprite...</option>
+                        {sprites.map(s => (
+                            <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Starting Skills</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+                        {skills.map(s => (
+                            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={editing.startingSkills?.includes(s.id)}
+                                    onChange={() => toggleSkill(s.id)}
+                                />
+                                <span>{s.name}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '30px' }}>
+                    <button type="submit" className="btn btn-primary">Save Class</button>
+                    {!isNew && <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>}
+                </div>
+            </form>
+        </div>
+    );
+};
+
+const ClassEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<ClassList />} />
+            <Route path="new" element={<ClassForm />} />
+            <Route path=":id" element={<ClassForm />} />
+        </Routes>
+    );
+};
+
 export function AdminPage() {
     useEffect(() => {
         const styleSheet = document.createElement("style");
@@ -1862,6 +2027,13 @@ export function AdminPage() {
                     style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
                 >
                     Monsters
+                </NavLink>
+                <NavLink
+                    to="/admin/classes"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
+                >
+                    Classes
                 </NavLink>
                 <NavLink
                     to="/admin/skills"
@@ -1895,6 +2067,7 @@ export function AdminPage() {
             <div style={{ flex: 1, overflow: 'hidden', padding: '20px' }}>
                 <Routes>
                     <Route path="monsters/*" element={<MonsterEditor />} />
+                    <Route path="classes/*" element={<ClassEditor />} />
                     <Route path="skills/*" element={<SkillEditor />} />
                     <Route path="maps/*" element={<MapEditor />} />
                     <Route path="tilesets/*" element={<TilesetEditor />} />
