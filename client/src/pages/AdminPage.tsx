@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route, NavLink, useNavigate, useParams, Navigate } from 'react-router-dom';
 
 // --- Types ---
 
@@ -20,6 +21,20 @@ interface Skill {
     range: number;
     icon: string;
     target: 'target' | 'self' | 'passive';
+}
+
+interface Sprite {
+    id: string;
+    name: string;
+    type: 'character' | 'prop' | 'effect' | 'ui';
+    texture: string;
+    frameWidth: number;
+    frameHeight: number;
+    animations: Record<string, {
+        frames: number[];
+        frameRate: number;
+        loop: boolean;
+    }>;
 }
 
 interface MapData {
@@ -271,10 +286,9 @@ const styles = `
 
 // --- Components ---
 
-const MonsterEditor = () => {
+const MonsterList = () => {
     const [monsters, setMonsters] = useState<Monster[]>([]);
-    const [editing, setEditing] = useState<Monster | null>(null);
-    const [isNew, setIsNew] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchMonsters();
@@ -286,90 +300,15 @@ const MonsterEditor = () => {
         setMonsters(data);
     };
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editing) return;
-
-        await fetch('http://localhost:3000/api/monsters', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editing)
-        });
-
-        setEditing(null);
-        setIsNew(false);
-        fetchMonsters();
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this monster?')) return;
-        await fetch(`http://localhost:3000/api/monsters/${id}`, { method: 'DELETE' });
-        fetchMonsters();
-        setEditing(null);
-    };
-
-    if (editing) {
-        return (
-            <div className="form-container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2>{isNew ? 'Create Monster' : 'Edit Monster'}</h2>
-                    <button className="btn btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
-                </div>
-                <form onSubmit={handleSave}>
-                    <div className="form-group">
-                        <label className="form-label">ID</label>
-                        <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Name</label>
-                        <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                        <div className="form-group">
-                            <label className="form-label">Level</label>
-                            <input type="number" className="form-input" value={editing.baseLevel} onChange={e => setEditing({ ...editing, baseLevel: parseInt(e.target.value) })} required />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">HP</label>
-                            <input type="number" className="form-input" value={editing.hp} onChange={e => setEditing({ ...editing, hp: parseInt(e.target.value) })} required />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Energy</label>
-                            <input type="number" className="form-input" value={editing.energy} onChange={e => setEditing({ ...editing, energy: parseInt(e.target.value) })} required />
-                        </div>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Strategies</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                            <input className="form-input" placeholder="Passive" value={editing.passiveStrategy} onChange={e => setEditing({ ...editing, passiveStrategy: e.target.value })} />
-                            <input className="form-input" placeholder="Attack" value={editing.attackStrategy} onChange={e => setEditing({ ...editing, attackStrategy: e.target.value })} />
-                            <input className="form-input" placeholder="Flee" value={editing.fleeStrategy} onChange={e => setEditing({ ...editing, fleeStrategy: e.target.value })} />
-                        </div>
-                    </div>
-                    <div style={{ marginTop: '30px' }}>
-                        <button type="submit" className="btn btn-primary">Save Monster</button>
-                        {!isNew && <button type="button" className="btn btn-danger" onClick={() => handleDelete(editing.id)}>Delete</button>}
-                    </div>
-                </form>
-            </div>
-        );
-    }
-
     return (
         <div>
             <div className="editor-header">
                 <h2 className="editor-title">Monster Database</h2>
-                <button className="btn btn-primary" onClick={() => {
-                    setEditing({
-                        id: '', name: '', baseLevel: 1, hp: 100, energy: 100,
-                        passiveStrategy: 'wander', attackStrategy: 'melee_basic', fleeStrategy: 'low_hp'
-                    });
-                    setIsNew(true);
-                }}>+ New Monster</button>
+                <button className="btn btn-primary" onClick={() => navigate('new')}>+ New Monster</button>
             </div>
             <div className="card-grid">
                 {monsters.map(m => (
-                    <div key={m.id} className="card" onClick={() => { setEditing(m); setIsNew(false); }}>
+                    <div key={m.id} className="card" onClick={() => navigate(m.id)}>
                         <h3>{m.name}</h3>
                         <p>Lvl {m.baseLevel} • {m.hp} HP</p>
                         <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>ID: {m.id}</p>
@@ -380,10 +319,123 @@ const MonsterEditor = () => {
     );
 };
 
-const SkillEditor = () => {
+const MonsterForm = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [editing, setEditing] = useState<Monster | null>(null);
+    const isNew = !id;
+
+    useEffect(() => {
+        if (!isNew && id) {
+            // Fetch specific monster
+            fetch(`http://localhost:3000/api/monsters/${id}`) // Assuming this endpoint exists or we fetch all and find
+                .then(res => res.json())
+                .then(data => {
+                    // If the API returns the specific monster, great. If it returns all, we filter.
+                    // The original code fetched all. Let's assume we can fetch all and find for now to be safe,
+                    // or better, let's assume the API supports get by ID or we just fetch all.
+                    // Actually, looking at handleDelete, it uses /api/monsters/${id}, so likely GET /api/monsters/${id} works?
+                    // If not, we might need to fetch all. Let's try fetch all and find to be safe if we are unsure,
+                    // but standard REST implies GET /:id.
+                    // Let's try to fetch all and find, to match previous behavior's reliability if we aren't sure about backend.
+                    // Wait, previous code: fetchMonsters() -> /api/monsters (GET).
+                    // handleDelete -> /api/monsters/${id} (DELETE).
+                    // Let's assume GET /api/monsters/${id} exists. If not, I'll fix it.
+                    // Actually, to be safe and consistent with previous code which only used fetchMonsters,
+                    // I will fetch all and find.
+                    return fetch('http://localhost:3000/api/monsters').then(r => r.json()).then((all: Monster[]) => {
+                        const found = all.find(m => m.id === id);
+                        if (found) setEditing(found);
+                    });
+                });
+        } else {
+            setEditing({
+                id: '', name: '', baseLevel: 1, hp: 100, energy: 100,
+                passiveStrategy: 'wander', attackStrategy: 'melee_basic', fleeStrategy: 'low_hp'
+            });
+        }
+    }, [id, isNew]);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editing) return;
+
+        await fetch('http://localhost:3000/api/monsters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editing)
+        });
+
+        navigate('..');
+    };
+
+    const handleDelete = async () => {
+        if (!editing || !confirm('Are you sure you want to delete this monster?')) return;
+        await fetch(`http://localhost:3000/api/monsters/${editing.id}`, { method: 'DELETE' });
+        navigate('..');
+    };
+
+    if (!editing) return <div>Loading...</div>;
+
+    return (
+        <div className="form-container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2>{isNew ? 'Create Monster' : 'Edit Monster'}</h2>
+                <button className="btn btn-secondary" onClick={() => navigate('..')}>Cancel</button>
+            </div>
+            <form onSubmit={handleSave}>
+                <div className="form-group">
+                    <label className="form-label">ID</label>
+                    <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Level</label>
+                        <input type="number" className="form-input" value={editing.baseLevel} onChange={e => setEditing({ ...editing, baseLevel: parseInt(e.target.value) })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">HP</label>
+                        <input type="number" className="form-input" value={editing.hp} onChange={e => setEditing({ ...editing, hp: parseInt(e.target.value) })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Energy</label>
+                        <input type="number" className="form-input" value={editing.energy} onChange={e => setEditing({ ...editing, energy: parseInt(e.target.value) })} required />
+                    </div>
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Strategies</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                        <input className="form-input" placeholder="Passive" value={editing.passiveStrategy} onChange={e => setEditing({ ...editing, passiveStrategy: e.target.value })} />
+                        <input className="form-input" placeholder="Attack" value={editing.attackStrategy} onChange={e => setEditing({ ...editing, attackStrategy: e.target.value })} />
+                        <input className="form-input" placeholder="Flee" value={editing.fleeStrategy} onChange={e => setEditing({ ...editing, fleeStrategy: e.target.value })} />
+                    </div>
+                </div>
+                <div style={{ marginTop: '30px' }}>
+                    <button type="submit" className="btn btn-primary">Save Monster</button>
+                    {!isNew && <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>}
+                </div>
+            </form>
+        </div>
+    );
+};
+
+const MonsterEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<MonsterList />} />
+            <Route path="new" element={<MonsterForm />} />
+            <Route path=":id" element={<MonsterForm />} />
+        </Routes>
+    );
+};
+
+const SkillList = () => {
     const [skills, setSkills] = useState<Skill[]>([]);
-    const [editing, setEditing] = useState<Skill | null>(null);
-    const [isNew, setIsNew] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchSkills();
@@ -395,6 +447,46 @@ const SkillEditor = () => {
         setSkills(data);
     };
 
+    return (
+        <div>
+            <div className="editor-header">
+                <h2 className="editor-title">Skill Database</h2>
+                <button className="btn btn-primary" onClick={() => navigate('new')}>+ New Skill</button>
+            </div>
+            <div className="card-grid">
+                {skills.map(s => (
+                    <div key={s.id} className="card" onClick={() => navigate(s.id)}>
+                        <h3>{s.name}</h3>
+                        <p>{s.description}</p>
+                        <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>Range: {s.range} • {s.target}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const SkillForm = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [editing, setEditing] = useState<Skill | null>(null);
+    const isNew = !id;
+
+    useEffect(() => {
+        if (!isNew && id) {
+            fetch('http://localhost:3000/api/skills')
+                .then(res => res.json())
+                .then((all: Skill[]) => {
+                    const found = all.find(s => s.id === id);
+                    if (found) setEditing(found);
+                });
+        } else {
+            setEditing({
+                id: '', name: '', description: '', range: 1, icon: 'sword', target: 'target'
+            });
+        }
+    }, [id, isNew]);
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editing) return;
@@ -405,86 +497,70 @@ const SkillEditor = () => {
             body: JSON.stringify(editing)
         });
 
-        setEditing(null);
-        setIsNew(false);
-        fetchSkills();
+        navigate('..');
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this skill?')) return;
-        await fetch(`http://localhost:3000/api/skills/${id}`, { method: 'DELETE' });
-        fetchSkills();
-        setEditing(null);
+    const handleDelete = async () => {
+        if (!editing || !confirm('Are you sure you want to delete this skill?')) return;
+        await fetch(`http://localhost:3000/api/skills/${editing.id}`, { method: 'DELETE' });
+        navigate('..');
     };
 
-    if (editing) {
-        return (
-            <div className="form-container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2>{isNew ? 'Create Skill' : 'Edit Skill'}</h2>
-                    <button className="btn btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
-                </div>
-                <form onSubmit={handleSave}>
-                    <div className="form-group">
-                        <label className="form-label">ID</label>
-                        <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Name</label>
-                        <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Description</label>
-                        <textarea className="form-textarea" rows={3} value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} required />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                        <div className="form-group">
-                            <label className="form-label">Range</label>
-                            <input type="number" className="form-input" value={editing.range} onChange={e => setEditing({ ...editing, range: parseInt(e.target.value) })} required />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Icon</label>
-                            <input className="form-input" value={editing.icon} onChange={e => setEditing({ ...editing, icon: e.target.value })} required />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Target Type</label>
-                            <select className="form-select" value={editing.target} onChange={e => setEditing({ ...editing, target: e.target.value as any })}>
-                                <option value="target">Target</option>
-                                <option value="self">Self</option>
-                                <option value="passive">Passive</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div style={{ marginTop: '30px' }}>
-                        <button type="submit" className="btn btn-primary">Save Skill</button>
-                        {!isNew && <button type="button" className="btn btn-danger" onClick={() => handleDelete(editing.id)}>Delete</button>}
-                    </div>
-                </form>
-            </div>
-        );
-    }
+    if (!editing) return <div>Loading...</div>;
 
     return (
-        <div>
-            <div className="editor-header">
-                <h2 className="editor-title">Skill Database</h2>
-                <button className="btn btn-primary" onClick={() => {
-                    setEditing({
-                        id: '', name: '', description: '', range: 1, icon: 'sword', target: 'target'
-                    });
-                    setIsNew(true);
-                }}>+ New Skill</button>
+        <div className="form-container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2>{isNew ? 'Create Skill' : 'Edit Skill'}</h2>
+                <button className="btn btn-secondary" onClick={() => navigate('..')}>Cancel</button>
             </div>
-            <div className="card-grid">
-                {skills.map(s => (
-                    <div key={s.id} className="card" onClick={() => { setEditing(s); setIsNew(false); }}>
-                        <h3>{s.name}</h3>
-                        <p>{s.description}</p>
-                        <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>Range: {s.range} • {s.target}</p>
+            <form onSubmit={handleSave}>
+                <div className="form-group">
+                    <label className="form-label">ID</label>
+                    <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Description</label>
+                    <textarea className="form-textarea" rows={3} value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} required />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Range</label>
+                        <input type="number" className="form-input" value={editing.range} onChange={e => setEditing({ ...editing, range: parseInt(e.target.value) })} required />
                     </div>
-                ))}
-            </div>
+                    <div className="form-group">
+                        <label className="form-label">Icon</label>
+                        <input className="form-input" value={editing.icon} onChange={e => setEditing({ ...editing, icon: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Target Type</label>
+                        <select className="form-select" value={editing.target} onChange={e => setEditing({ ...editing, target: e.target.value as any })}>
+                            <option value="target">Target</option>
+                            <option value="self">Self</option>
+                            <option value="passive">Passive</option>
+                        </select>
+                    </div>
+                </div>
+                <div style={{ marginTop: '30px' }}>
+                    <button type="submit" className="btn btn-primary">Save Skill</button>
+                    {!isNew && <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>}
+                </div>
+            </form>
         </div>
+    );
+};
+
+const SkillEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<SkillList />} />
+            <Route path="new" element={<SkillForm />} />
+            <Route path=":id" element={<SkillForm />} />
+        </Routes>
     );
 };
 
@@ -569,11 +645,139 @@ const SwatchPreview = ({ swatch, image }: { swatch: any, image?: HTMLImageElemen
     );
 };
 
-const MapEditor = () => {
-    const [currentMapId, setCurrentMapId] = useState<string | null>(null);
+const MapList = () => {
     const [mapList, setMapList] = useState<string[]>([]);
-    const [mapData, setMapData] = useState<MapData | null>(null);
     const [activeMapId, setActiveMapId] = useState<string | null>(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchMapList();
+        fetchActiveMap();
+    }, []);
+
+    const fetchMapList = async () => {
+        const res = await fetch('http://localhost:3000/api/maps');
+        const data = await res.json();
+        setMapList(data);
+    };
+
+    const fetchActiveMap = async () => {
+        const res = await fetch('http://localhost:3000/api/active-map');
+        const data = await res.json();
+        setActiveMapId(data.id);
+    };
+
+    const handleCreateMap = async () => {
+        const name = prompt("Enter new Map name:");
+        if (!name) return;
+        const id = name.toLowerCase().replace(/\s+/g, '_');
+
+        if (mapList.includes(id)) {
+            alert("Map ID already exists!");
+            return;
+        }
+
+        const newMap: MapData = {
+            id,
+            name,
+            width: 50,
+            height: 50,
+            description: "New Map",
+            spawnPoints: [],
+            tiles: {
+                default: { type: "grass", walkable: true, tileset: "grass" },
+                regions: []
+            },
+            monsterSpawns: [],
+            itemSpawns: [],
+            metadata: {
+                difficulty: "easy",
+                recommendedLevel: 1,
+                maxPlayers: 10,
+                theme: "forest"
+            },
+            placedSwatches: []
+        };
+
+        await fetch('http://localhost:3000/api/map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newMap)
+        });
+
+        fetchMapList();
+        navigate(id);
+    };
+
+    const handleDeleteMap = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (id === activeMapId) {
+            alert("Cannot delete the currently active map!");
+            return;
+        }
+        if (!confirm(`Are you sure you want to delete map "${id}"?`)) return;
+
+        await fetch(`http://localhost:3000/api/maps/${id}`, {
+            method: 'DELETE'
+        });
+
+        fetchMapList();
+    };
+
+    const handleSetActiveMap = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm(`Set "${id}" as the active server map? This will reload the world for all players.`)) return;
+
+        await fetch('http://localhost:3000/api/active-map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        setActiveMapId(id);
+        alert(`Map "${id}" is now active!`);
+    };
+
+    return (
+        <div>
+            <div className="editor-header">
+                <h2 className="editor-title">Maps</h2>
+                <button className="btn btn-primary" onClick={handleCreateMap}>+ New Map</button>
+            </div>
+            <div className="card-grid">
+                {mapList.map(id => (
+                    <div key={id} className="card" onClick={() => navigate(id)} style={{ border: activeMapId === id ? '2px solid #00ff00' : undefined }}>
+                        <h3>{id}</h3>
+                        <p>Map ID: {id}</p>
+                        {activeMapId === id && <p style={{ color: '#00ff00', fontWeight: 'bold' }}>Currently Active</p>}
+                        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                            {activeMapId !== id && (
+                                <button
+                                    className="btn btn-secondary"
+                                    style={{ padding: '5px 10px', fontSize: '0.8rem' }}
+                                    onClick={(e) => handleSetActiveMap(id, e)}
+                                >
+                                    Set Active
+                                </button>
+                            )}
+                            <button
+                                className="btn btn-danger"
+                                style={{ padding: '5px 10px', fontSize: '0.8rem' }}
+                                onClick={(e) => handleDeleteMap(id, e)}
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const MapEditView = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [mapData, setMapData] = useState<MapData | null>(null);
     const [swatchSets, setSwatchSets] = useState<any[]>([]);
     const [activeSetId, setActiveSetId] = useState<string>('default_set');
     const [selectedSwatch, setSelectedSwatch] = useState<any | null>(null);
@@ -588,10 +792,9 @@ const MapEditor = () => {
     const [tilesetMetadata, setTilesetMetadata] = useState<Record<string, any>>({});
 
     useEffect(() => {
-        fetchMapList();
         fetchSwatches();
-        fetchActiveMap();
-    }, []);
+        if (id) fetchMap(id);
+    }, [id]);
 
     // Load Tileset Resources
     useEffect(() => {
@@ -639,39 +842,6 @@ const MapEditor = () => {
         }
     }, [swatchSets]);
 
-    useEffect(() => {
-        if (currentMapId) {
-            fetchMap(currentMapId);
-        } else {
-            setMapData(null);
-        }
-    }, [currentMapId]);
-
-    const fetchMapList = async () => {
-        const res = await fetch('http://localhost:3000/api/maps');
-        const data = await res.json();
-        setMapList(data);
-    };
-
-    const fetchActiveMap = async () => {
-        const res = await fetch('http://localhost:3000/api/active-map');
-        const data = await res.json();
-        setActiveMapId(data.id);
-    };
-
-    const handleSetActiveMap = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!confirm(`Set "${id}" as the active server map? This will reload the world for all players.`)) return;
-
-        await fetch('http://localhost:3000/api/active-map', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
-        });
-        setActiveMapId(id);
-        alert(`Map "${id}" is now active!`);
-    };
-
     const fetchMap = async (id: string) => {
         const res = await fetch(`http://localhost:3000/api/maps/${id}`);
         const data = await res.json();
@@ -684,64 +854,6 @@ const MapEditor = () => {
         const data = await res.json();
         setSwatchSets(data);
         if (data.length > 0) setActiveSetId(data[0].id);
-    };
-
-    const handleCreateMap = async () => {
-        const name = prompt("Enter new Map name:");
-        if (!name) return;
-        const id = name.toLowerCase().replace(/\s+/g, '_');
-
-        if (mapList.includes(id)) {
-            alert("Map ID already exists!");
-            return;
-        }
-
-        const newMap: MapData = {
-            id,
-            name,
-            width: 50,
-            height: 50,
-            description: "New Map",
-            spawnPoints: [],
-            tiles: {
-                default: { type: "grass", walkable: true, tileset: "grass" },
-                regions: []
-            },
-            monsterSpawns: [],
-            itemSpawns: [],
-            metadata: {
-                difficulty: "easy",
-                recommendedLevel: 1,
-                maxPlayers: 10,
-                theme: "forest"
-            },
-            placedSwatches: []
-        };
-
-        await fetch('http://localhost:3000/api/map', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newMap)
-        });
-
-        fetchMapList();
-        setCurrentMapId(id);
-    };
-
-    const handleDeleteMap = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (id === activeMapId) {
-            alert("Cannot delete the currently active map!");
-            return;
-        }
-        if (!confirm(`Are you sure you want to delete map "${id}"?`)) return;
-
-        await fetch(`http://localhost:3000/api/maps/${id}`, {
-            method: 'DELETE'
-        });
-
-        fetchMapList();
-        if (currentMapId === id) setCurrentMapId(null);
     };
 
     const handleSave = async () => {
@@ -765,8 +877,6 @@ const MapEditor = () => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Resize canvas to match container (or map size? Let's match container for viewport, but we need to handle transforms)
-        // Actually, let's make the canvas the size of the viewport and use transforms.
         if (containerRef.current) {
             canvas.width = containerRef.current.clientWidth;
             canvas.height = containerRef.current.clientHeight;
@@ -816,19 +926,6 @@ const MapEditor = () => {
                 if (!img) return;
 
                 swatch.tiles.forEach((t: any) => {
-                    // Calculate source coordinates
-                    // Assuming t.x, t.y are pixel coordinates in the texture
-                    // And we want to draw them at p.x + (t.x - minX), p.y + (t.y - minY)
-                    // Wait, existing logic was: left: t.x - swatchDef.tiles[0].x
-                    // Let's assume t.x/t.y in swatch definition are relative to the swatch's top-left?
-                    // No, usually they are absolute texture coordinates.
-                    // But when placing, we need to know the relative offset.
-
-                    // Let's find the top-left of the swatch in texture space to normalize
-                    // Actually, the previous logic: left: t.x - swatchDef.tiles[0].x
-                    // This assumes tiles[0] is the top-left-most tile. This might not be true if tiles are not sorted.
-                    // Let's calculate minX/minY for the swatch once.
-
                     let minX = Infinity, minY = Infinity;
                     swatch.tiles.forEach((st: any) => {
                         if (st.x < minX) minX = st.x;
@@ -918,51 +1015,13 @@ const MapEditor = () => {
     const activeSet = swatchSets.find(s => s.id === activeSetId);
     const activeSwatches = activeSet ? activeSet.swatches : [];
 
-    if (!currentMapId) {
-        return (
-            <div>
-                <div className="editor-header">
-                    <h2 className="editor-title">Maps</h2>
-                    <button className="btn btn-primary" onClick={handleCreateMap}>+ New Map</button>
-                </div>
-                <div className="card-grid">
-                    {mapList.map(id => (
-                        <div key={id} className="card" onClick={() => setCurrentMapId(id)} style={{ border: activeMapId === id ? '2px solid #00ff00' : undefined }}>
-                            <h3>{id}</h3>
-                            <p>Map ID: {id}</p>
-                            {activeMapId === id && <p style={{ color: '#00ff00', fontWeight: 'bold' }}>Currently Active</p>}
-                            <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                                {activeMapId !== id && (
-                                    <button
-                                        className="btn btn-secondary"
-                                        style={{ padding: '5px 10px', fontSize: '0.8rem' }}
-                                        onClick={(e) => handleSetActiveMap(id, e)}
-                                    >
-                                        Set Active
-                                    </button>
-                                )}
-                                <button
-                                    className="btn btn-danger"
-                                    style={{ padding: '5px 10px', fontSize: '0.8rem' }}
-                                    onClick={(e) => handleDeleteMap(id, e)}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
     if (!mapData) return <div>Loading map...</div>;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="editor-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button className="btn btn-secondary" onClick={() => setCurrentMapId(null)}>← Back</button>
+                    <button className="btn btn-secondary" onClick={() => navigate('..')}>← Back</button>
                     <h2 className="editor-title">Editing: {mapData.name}</h2>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -1039,9 +1098,21 @@ const MapEditor = () => {
     );
 };
 
-const TilesetEditor = () => {
+const MapEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<MapList />} />
+            <Route path=":id" element={<MapEditView />} />
+        </Routes>
+    );
+};
+
+const TilesetView = () => {
+    const { name } = useParams();
+    const navigate = useNavigate();
+    const selectedTileset = name || null;
+
     const [tilesets, setTilesets] = useState<string[]>([]);
-    const [selectedTileset, setSelectedTileset] = useState<string | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [gridSize, setGridSize] = useState(32);
     const [zoom, setZoom] = useState(1);
@@ -1060,6 +1131,28 @@ const TilesetEditor = () => {
 
     // Resource Cache
     const [tilesetImages, setTilesetImages] = useState<Record<string, HTMLImageElement>>({});
+
+    // Swatch Builder State
+    const [swatchName, setSwatchName] = useState('');
+    const [swatchWalkable, setSwatchWalkable] = useState(true);
+
+    // Container ref for fit-to-view calculation
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        fetchTilesets();
+        fetchSwatches();
+    }, []);
+
+    useEffect(() => {
+        if (selectedTileset) {
+            fetchTilesetData(selectedTileset);
+        } else {
+            setPreviewImage(null);
+            setSelectionStart(null);
+            setSelectionEnd(null);
+        }
+    }, [selectedTileset]);
 
     useEffect(() => {
         const loadResources = async () => {
@@ -1102,16 +1195,6 @@ const TilesetEditor = () => {
             loadResources();
         }
     }, [swatchSets]);
-    const [swatchName, setSwatchName] = useState('');
-    const [swatchWalkable, setSwatchWalkable] = useState(true);
-
-    // Container ref for fit-to-view calculation
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        fetchTilesets();
-        fetchSwatches();
-    }, []);
 
     const fetchTilesets = async () => {
         const res = await fetch('http://localhost:3000/api/tilesets');
@@ -1128,9 +1211,7 @@ const TilesetEditor = () => {
         }
     };
 
-    const handleSelect = async (name: string) => {
-        if (selectedTileset === name) return;
-        setSelectedTileset(name);
+    const fetchTilesetData = async (name: string) => {
         const res = await fetch(`http://localhost:3000/api/tilesets/${name}`);
         const data = await res.json();
         if (data.texture) setPreviewImage(data.texture);
@@ -1139,10 +1220,15 @@ const TilesetEditor = () => {
         setSelectionEnd(null);
     };
 
+    const handleSelect = (name: string) => {
+        if (selectedTileset === name) return;
+        navigate(name);
+    };
+
     const handleSwatchClick = async (swatch: any) => {
         // 1. Select the tileset if not already selected
         if (selectedTileset !== swatch.tileset) {
-            await handleSelect(swatch.tileset);
+            navigate(swatch.tileset);
         }
 
         // 2. Set form data
@@ -1593,10 +1679,171 @@ const TilesetEditor = () => {
     );
 };
 
+const TilesetEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<TilesetView />} />
+            <Route path=":name" element={<TilesetView />} />
+        </Routes>
+    );
+};
+
+
+const SpriteList = () => {
+    const [sprites, setSprites] = useState<Sprite[]>([]);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchSprites();
+    }, []);
+
+    const fetchSprites = async () => {
+        const res = await fetch('http://localhost:3000/api/sprites');
+        const data = await res.json();
+        setSprites(data);
+    };
+
+    return (
+        <div>
+            <div className="editor-header">
+                <h2 className="editor-title">Sprite Database</h2>
+                <button className="btn btn-primary" onClick={() => navigate('new')}>+ New Sprite</button>
+            </div>
+            <div className="card-grid">
+                {sprites.map(s => (
+                    <div key={s.id} className="card" onClick={() => navigate(s.id)}>
+                        <h3>{s.name}</h3>
+                        <p>{s.type} • {s.texture}</p>
+                        <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>{s.frameWidth}x{s.frameHeight}px</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const SpriteForm = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [editing, setEditing] = useState<Sprite | null>(null);
+    const isNew = !id;
+
+    useEffect(() => {
+        if (!isNew && id) {
+            fetch('http://localhost:3000/api/sprites')
+                .then(res => res.json())
+                .then((all: Sprite[]) => {
+                    const found = all.find(s => s.id === id);
+                    if (found) setEditing(found);
+                });
+        } else {
+            setEditing({
+                id: '', name: '', type: 'character', texture: '', frameWidth: 32, frameHeight: 32, animations: {}
+            });
+        }
+    }, [id, isNew]);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editing) return;
+
+        await fetch('http://localhost:3000/api/sprites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editing)
+        });
+
+        navigate('..');
+    };
+
+    const handleDelete = async () => {
+        if (!editing || !confirm('Are you sure you want to delete this sprite?')) return;
+        await fetch(`http://localhost:3000/api/sprites/${editing.id}`, { method: 'DELETE' });
+        navigate('..');
+    };
+
+    if (!editing) return <div>Loading...</div>;
+
+    return (
+        <div className="form-container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2>{isNew ? 'Create Sprite' : 'Edit Sprite'}</h2>
+                <button className="btn btn-secondary" onClick={() => navigate('..')}>Cancel</button>
+            </div>
+            <form onSubmit={handleSave}>
+                <div className="form-group">
+                    <label className="form-label">ID</label>
+                    <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Type</label>
+                        <select className="form-select" value={editing.type} onChange={e => setEditing({ ...editing, type: e.target.value as any })}>
+                            <option value="character">Character</option>
+                            <option value="prop">Prop</option>
+                            <option value="effect">Effect</option>
+                            <option value="ui">UI</option>
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Texture File</label>
+                        <input className="form-input" value={editing.texture} onChange={e => setEditing({ ...editing, texture: e.target.value })} required />
+                    </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Frame Width</label>
+                        <input type="number" className="form-input" value={editing.frameWidth} onChange={e => setEditing({ ...editing, frameWidth: parseInt(e.target.value) })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Frame Height</label>
+                        <input type="number" className="form-input" value={editing.frameHeight} onChange={e => setEditing({ ...editing, frameHeight: parseInt(e.target.value) })} required />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Animations (JSON)</label>
+                    <textarea
+                        className="form-textarea"
+                        rows={5}
+                        value={JSON.stringify(editing.animations, null, 2)}
+                        onChange={e => {
+                            try {
+                                const parsed = JSON.parse(e.target.value);
+                                setEditing({ ...editing, animations: parsed });
+                            } catch (err) {
+                                // Allow typing invalid JSON, but maybe show error? 
+                                // For now, simple implementation.
+                            }
+                        }}
+                    />
+                    <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '5px' }}>Format: {"{ \"idle\": { \"frames\": [0, 1], \"frameRate\": 5, \"loop\": true } }"}</p>
+                </div>
+
+                <div style={{ marginTop: '30px' }}>
+                    <button type="submit" className="btn btn-primary">Save Sprite</button>
+                    {!isNew && <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>}
+                </div>
+            </form>
+        </div>
+    );
+};
+
+const SpriteEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<SpriteList />} />
+            <Route path="new" element={<SpriteForm />} />
+            <Route path=":id" element={<SpriteForm />} />
+        </Routes>
+    );
+};
 
 export function AdminPage() {
-    const [activeTab, setActiveTab] = useState('monsters');
-
     useEffect(() => {
         const styleSheet = document.createElement("style");
         styleSheet.innerText = styles;
@@ -1609,36 +1856,51 @@ export function AdminPage() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', color: '#eee' }}>
             <div style={{ display: 'flex', background: '#222', borderBottom: '1px solid #444' }}>
-                <div
-                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'monsters' ? '#333' : 'transparent', fontWeight: activeTab === 'monsters' ? 'bold' : 'normal' }}
-                    onClick={() => setActiveTab('monsters')}
+                <NavLink
+                    to="/admin/monsters"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
                 >
                     Monsters
-                </div>
-                <div
-                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'skills' ? '#333' : 'transparent', fontWeight: activeTab === 'skills' ? 'bold' : 'normal' }}
-                    onClick={() => setActiveTab('skills')}
+                </NavLink>
+                <NavLink
+                    to="/admin/skills"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
                 >
                     Skills
-                </div>
-                <div
-                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'maps' ? '#333' : 'transparent', fontWeight: activeTab === 'maps' ? 'bold' : 'normal' }}
-                    onClick={() => setActiveTab('maps')}
+                </NavLink>
+                <NavLink
+                    to="/admin/maps"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
                 >
                     Map Editor
-                </div>
-                <div
-                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'tilesets' ? '#333' : 'transparent', fontWeight: activeTab === 'tilesets' ? 'bold' : 'normal' }}
-                    onClick={() => setActiveTab('tilesets')}
+                </NavLink>
+                <NavLink
+                    to="/admin/tilesets"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
                 >
                     Tileset Editor
-                </div>
+                </NavLink>
+                <NavLink
+                    to="/admin/sprites"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
+                >
+                    Sprite Editor
+                </NavLink>
             </div>
             <div style={{ flex: 1, overflow: 'hidden', padding: '20px' }}>
-                {activeTab === 'monsters' && <MonsterEditor />}
-                {activeTab === 'skills' && <SkillEditor />}
-                {activeTab === 'maps' && <MapEditor />}
-                {activeTab === 'tilesets' && <TilesetEditor />}
+                <Routes>
+                    <Route path="monsters/*" element={<MonsterEditor />} />
+                    <Route path="skills/*" element={<SkillEditor />} />
+                    <Route path="maps/*" element={<MapEditor />} />
+                    <Route path="tilesets/*" element={<TilesetEditor />} />
+                    <Route path="sprites/*" element={<SpriteEditor />} />
+                    <Route path="*" element={<Navigate to="monsters" replace />} />
+                </Routes>
             </div>
         </div>
     );

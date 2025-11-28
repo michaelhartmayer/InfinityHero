@@ -9,6 +9,7 @@ import { EntityManager } from './managers/EntityManager.js';
 import { MonsterDatabase } from './managers/MonsterDatabase.js';
 import { SkillDatabase } from './managers/SkillDatabase.js';
 import { GameLoop } from './GameLoop.js';
+import { SpriteDatabase } from './managers/SpriteDatabase.js';
 import { MapLoader } from './utils/MapLoader.js';
 import { SwatchLoader } from './utils/SwatchLoader.js';
 
@@ -46,6 +47,22 @@ app.post('/api/skills', (req, res) => {
 app.delete('/api/skills/:id', (req, res) => {
     const { id } = req.params;
     skillDatabase.deleteTemplate(id);
+    res.json({ success: true });
+});
+
+app.get('/api/sprites', (req, res) => {
+    res.json(spriteDatabase.getAllTemplates());
+});
+
+app.post('/api/sprites', (req, res) => {
+    const template = req.body;
+    spriteDatabase.updateTemplate(template);
+    res.json({ success: true });
+});
+
+app.delete('/api/sprites/:id', (req, res) => {
+    const { id } = req.params;
+    spriteDatabase.deleteTemplate(id);
     res.json({ success: true });
 });
 
@@ -245,6 +262,7 @@ const worldManager = new WorldManager('01_starting_zone');
 const entityManager = new EntityManager();
 const monsterDatabase = new MonsterDatabase();
 const skillDatabase = new SkillDatabase();
+const spriteDatabase = new SpriteDatabase();
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
 // Get map data for spawning

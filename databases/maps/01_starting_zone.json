@@ -171,7 +171,7 @@
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 31.083333333333336,
+                "x": 37,
                 "y": 3
             },
             "respawnTime": 30000
@@ -179,7 +179,7 @@
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 45.33333333333337,
+                "x": 47,
                 "y": 1
             },
             "respawnTime": 30000
@@ -187,16 +187,16 @@
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 15,
-                "y": 2
+                "x": 3,
+                "y": 8
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 29,
-                "y": 1
+                "x": 28,
+                "y": 11
             },
             "respawnTime": 30000
         }
@@ -2427,26 +2427,26 @@
         {
             "x": 224,
             "y": 512,
-            "swatchId": "dirt3",
-            "instanceId": "txs3y9n06"
+            "swatchId": "cobble1",
+            "instanceId": "qngv8rxs6"
         },
         {
             "x": 224,
             "y": 544,
-            "swatchId": "dirt5",
-            "instanceId": "mb2ivbg4m"
+            "swatchId": "cobble1",
+            "instanceId": "1jcn1pw8v"
         },
         {
             "x": 224,
             "y": 576,
-            "swatchId": "dirt5",
-            "instanceId": "byrm56jjk"
+            "swatchId": "cobble1",
+            "instanceId": "63g68e6uc"
         },
         {
             "x": 224,
             "y": 608,
-            "swatchId": "dirt3",
-            "instanceId": "t9mehb0o8"
+            "swatchId": "cobble1",
+            "instanceId": "9txxe5sql"
         },
         {
             "x": 224,
@@ -2745,8 +2745,8 @@
         {
             "x": 256,
             "y": 608,
-            "swatchId": "dirt1",
-            "instanceId": "ahggff3bx"
+            "swatchId": "cobble1",
+            "instanceId": "3yl2zmqom"
         },
         {
             "x": 256,
@@ -3045,8 +3045,8 @@
         {
             "x": 288,
             "y": 608,
-            "swatchId": "dirt1",
-            "instanceId": "tgsqvjcs7"
+            "swatchId": "cobble1",
+            "instanceId": "cm98zd1cy"
         },
         {
             "x": 288,
@@ -3291,8 +3291,8 @@
         {
             "x": 320,
             "y": 320,
-            "swatchId": "cobble4",
-            "instanceId": "qe2cxzf06"
+            "swatchId": "cobble1",
+            "instanceId": "nhyeie6ki"
         },
         {
             "x": 320,
@@ -3627,8 +3627,8 @@
         {
             "x": 352,
             "y": 512,
-            "swatchId": "dirt1",
-            "instanceId": "lrbmtwmma"
+            "swatchId": "cobble1",
+            "instanceId": "ck29e53qy"
         },
         {
             "x": 352,
@@ -3639,14 +3639,14 @@
         {
             "x": 352,
             "y": 576,
-            "swatchId": "dirt6",
-            "instanceId": "p5frollkz"
+            "swatchId": "cobble1",
+            "instanceId": "wxt3gk9g6"
         },
         {
             "x": 352,
             "y": 608,
-            "swatchId": "dirt1",
-            "instanceId": "h84umbume"
+            "swatchId": "cobble1",
+            "instanceId": "b5nktn58c"
         },
         {
             "x": 352,
@@ -4227,26 +4227,26 @@
         {
             "x": 416,
             "y": 512,
-            "swatchId": "dirt6",
-            "instanceId": "mtghvyxuh"
+            "swatchId": "cobble1",
+            "instanceId": "izrle6xn3"
         },
         {
             "x": 416,
             "y": 544,
-            "swatchId": "dirt3",
-            "instanceId": "obxngsww9"
+            "swatchId": "cobble1",
+            "instanceId": "gzgff6d21"
         },
         {
             "x": 416,
             "y": 576,
-            "swatchId": "dirt4",
-            "instanceId": "v2ga2d4qd"
+            "swatchId": "cobble1",
+            "instanceId": "7h7ad88hc"
         },
         {
             "x": 416,
             "y": 608,
-            "swatchId": "dirt1",
-            "instanceId": "m00ie0szj"
+            "swatchId": "cobble1",
+            "instanceId": "keteln3f3"
         },
         {
             "x": 416,
@@ -4833,20 +4833,20 @@
         {
             "x": 480,
             "y": 544,
-            "swatchId": "dirt3",
-            "instanceId": "cbtbmdupo"
+            "swatchId": "cobble1",
+            "instanceId": "dhxstdms7"
         },
         {
             "x": 480,
             "y": 576,
-            "swatchId": "dirt2",
-            "instanceId": "7jxjr9za6"
+            "swatchId": "cobble1",
+            "instanceId": "d8p3i999g"
         },
         {
             "x": 480,
             "y": 608,
-            "swatchId": "dirt6",
-            "instanceId": "7arj2vku7"
+            "swatchId": "cobble1",
+            "instanceId": "dslsng5xf"
         },
         {
             "x": 480,
@@ -4857,8 +4857,8 @@
         {
             "x": 480,
             "y": 672,
-            "swatchId": "dirt2",
-            "instanceId": "3nsw0scxd"
+            "swatchId": "cobble1",
+            "instanceId": "9bln0ezz4"
         },
         {
             "x": 480,
@@ -5145,8 +5145,8 @@
         {
             "x": 512,
             "y": 608,
-            "swatchId": "dirt4",
-            "instanceId": "fg6a5cw8v"
+            "swatchId": "cobble1",
+            "instanceId": "4mm5b89uv"
         },
         {
             "x": 512,
@@ -5157,8 +5157,8 @@
         {
             "x": 512,
             "y": 672,
-            "swatchId": "dirt5",
-            "instanceId": "kiux2ozjd"
+            "swatchId": "cobble1",
+            "instanceId": "j78fvvu26"
         },
         {
             "x": 512,
@@ -5445,8 +5445,8 @@
         {
             "x": 544,
             "y": 608,
-            "swatchId": "dirt4",
-            "instanceId": "ry9oi47ut"
+            "swatchId": "cobble1",
+            "instanceId": "lnpbe4pqk"
         },
         {
             "x": 544,
@@ -5457,8 +5457,8 @@
         {
             "x": 544,
             "y": 672,
-            "swatchId": "dirt2",
-            "instanceId": "71fnyx5g5"
+            "swatchId": "cobble1",
+            "instanceId": "pr71w3in8"
         },
         {
             "x": 544,
@@ -5733,32 +5733,32 @@
         {
             "x": 576,
             "y": 544,
-            "swatchId": "dirt5",
-            "instanceId": "ce0lz7ngi"
+            "swatchId": "cobble1",
+            "instanceId": "dg8iypd5e"
         },
         {
             "x": 576,
             "y": 576,
-            "swatchId": "dirt5",
-            "instanceId": "62l7nshfw"
+            "swatchId": "cobble1",
+            "instanceId": "tkb1n538r"
         },
         {
             "x": 576,
             "y": 608,
-            "swatchId": "dirt3",
-            "instanceId": "b3ba3pvu1"
+            "swatchId": "cobble1",
+            "instanceId": "590t8h000"
         },
         {
             "x": 576,
             "y": 640,
-            "swatchId": "dirt1",
-            "instanceId": "ifucwzfv8"
+            "swatchId": "cobble1",
+            "instanceId": "wbjf947ix"
         },
         {
             "x": 576,
             "y": 672,
-            "swatchId": "dirt6",
-            "instanceId": "vv1ek8kbd"
+            "swatchId": "cobble1",
+            "instanceId": "hpi889hhi"
         },
         {
             "x": 576,
