@@ -12,7 +12,17 @@ export function HUD({ player }: HUDProps) {
         <div className="hud-container">
             <div className="hud-profile">
                 <div className="hud-avatar">
-                    {player.class === 'WARRIOR' ? '⚔️' : player.class === 'MAGE' ? '🔮' : '🗡️'}
+                    {(() => {
+                        switch (player.class) {
+                            case 'warrior': return '⚔️';
+                            case 'mage': return '🔮';
+                            case 'rogue': return '🗡️';
+                            case 'cleric': return '✝️';
+                            case 'ranger': return '🏹';
+                            case 'paladin': return '🛡️';
+                            default: return '❓';
+                        }
+                    })()}
                 </div>
                 <div className="hud-info">
                     <div className="hud-name">{player.name}</div>

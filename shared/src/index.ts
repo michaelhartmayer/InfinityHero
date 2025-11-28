@@ -27,7 +27,7 @@ export interface Player extends Entity {
     maxEnergy: number;
     level: number;
     xp: number;
-    class: 'WARRIOR' | 'MAGE' | 'ROGUE';
+    class: string;
     inventory: Item[];
     moveTarget: Position | null; // Current target position (next node in path)
     movePath: Position[]; // Full path to destination

@@ -448,21 +448,33 @@ export class GameRenderer {
                 let color: number;
 
                 switch (player.class) {
-                    case 'WARRIOR':
+                    case 'warrior':
                         geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-                        color = 0x3f51b5;
+                        color = 0x3f51b5; // Indigo
                         break;
-                    case 'MAGE':
+                    case 'mage':
                         geometry = new THREE.ConeGeometry(0.5, 1, 8);
-                        color = 0x9c27b0;
+                        color = 0x9c27b0; // Purple
                         break;
-                    case 'ROGUE':
+                    case 'rogue':
                         geometry = new THREE.OctahedronGeometry(0.5);
-                        color = 0xffeb3b;
+                        color = 0xffeb3b; // Yellow
+                        break;
+                    case 'cleric':
+                        geometry = new THREE.CylinderGeometry(0.4, 0.4, 0.8, 8);
+                        color = 0xe0f7fa; // Cyan/White
+                        break;
+                    case 'ranger':
+                        geometry = new THREE.ConeGeometry(0.4, 1, 4); // Pyramid
+                        color = 0x4caf50; // Green
+                        break;
+                    case 'paladin':
+                        geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+                        color = 0xffd700; // Gold
                         break;
                     default:
                         geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-                        color = 0xff0000;
+                        color = 0x9e9e9e; // Grey
                 }
 
                 const material = new THREE.MeshStandardMaterial({ color });

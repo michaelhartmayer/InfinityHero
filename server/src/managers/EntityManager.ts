@@ -1,17 +1,31 @@
 import { Player, Position, CONSTANTS, Item, Monster, MonsterStrategyType } from '@vibemaster/shared';
 import { MonsterLoader } from '../utils/MonsterLoader.js';
+import { ClassDatabase } from './ClassDatabase.js';
 
 export class EntityManager {
     private players: Record<string, Player> = {};
     private items: Record<string, Item> = {};
     private monsters: Record<string, Monster> = {};
 
-    constructor() {
+    private classDatabase: ClassDatabase;
+
+    constructor(classDatabase: ClassDatabase) {
+        this.classDatabase = classDatabase;
         // Load monster database on initialization
         MonsterLoader.loadDatabase();
     }
 
     public addPlayer(id: string, name: string, spawnPosition?: Position): Player {
+        // Select a random class or default to warrior
+        const classes = this.classDatabase.getAllTemplates();
+        const randomClass = classes.length > 0
+            ? classes[Math.floor(Math.random() * classes.length)]
+            : null;
+
+        const className = randomClass ? randomClass.id : 'warrior';
+        const hp = randomClass ? randomClass.baseHp : 100;
+        const energy = randomClass ? randomClass.baseEnergy : 50;
+
         const player: Player = {
             id,
             type: 'player',
@@ -20,13 +34,13 @@ export class EntityManager {
                 x: Math.floor(Math.random() * 40) + 5,
                 y: Math.floor(Math.random() * 40) + 5
             },
-            hp: 100,
-            maxHp: 100,
-            energy: 50,
-            maxEnergy: 50,
+            hp,
+            maxHp: hp,
+            energy,
+            maxEnergy: energy,
             level: 1,
             xp: 0,
-            class: ['WARRIOR', 'MAGE', 'ROGUE'][Math.floor(Math.random() * 3)] as any,
+            class: className,
             inventory: [],
             moveTarget: null,
             movePath: []

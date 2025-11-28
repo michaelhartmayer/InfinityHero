@@ -277,11 +277,11 @@ const io = new Server(httpServer, {
 });
 
 const worldManager = new WorldManager('01_starting_zone');
-const entityManager = new EntityManager();
+const classDatabase = new ClassDatabase();
+const entityManager = new EntityManager(classDatabase);
 const monsterDatabase = new MonsterDatabase();
 const skillDatabase = new SkillDatabase();
 const spriteDatabase = new SpriteDatabase();
-const classDatabase = new ClassDatabase();
 console.log('Initialized Class Database');
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
@@ -330,7 +330,7 @@ io.on('connection', (socket) => {
             spawnPoint
         );
 
-        socket.emit(EVENTS.WELCOME, { message: 'Welcome to VibeMaster!', playerId: socket.id });
+        socket.emit(EVENTS.WELCOME, { message: 'Welcome to VibeMaster!', playerId: socket.id, player });
         socket.emit(EVENTS.MAP_DATA, worldManager.getMap());
 
         // Debug: Log all incoming events
