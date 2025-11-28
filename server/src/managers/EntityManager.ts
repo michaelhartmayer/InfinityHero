@@ -230,4 +230,11 @@ export class EntityManager {
         }
         return occupied;
     }
+    public clearMonsters() {
+        this.monsters = {};
+    }
+
+    public clearItems() {
+        this.items = {};
+    }
 }

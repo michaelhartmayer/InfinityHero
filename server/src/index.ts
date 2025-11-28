@@ -10,10 +10,11 @@ import { MonsterDatabase } from './managers/MonsterDatabase.js';
 import { SkillDatabase } from './managers/SkillDatabase.js';
 import { GameLoop } from './GameLoop.js';
 import { MapLoader } from './utils/MapLoader.js';
+import { SwatchLoader } from './utils/SwatchLoader.js';
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // API Routes
 app.get('/api/monsters', (req, res) => {
@@ -48,14 +49,102 @@ app.delete('/api/skills/:id', (req, res) => {
     res.json({ success: true });
 });
 
-app.get('/api/map', (req, res) => {
-    res.json(worldManager.getMapData());
+app.get('/api/active-map', (req, res) => {
+    res.json({ id: worldManager.getMapData().id });
+});
+
+app.post('/api/active-map', (req, res) => {
+    const { id } = req.body;
+    try {
+        console.log(`Switching active map to: ${id}`);
+        worldManager.loadMap(id);
+
+        // Respawn entities for new map
+        entityManager.clearMonsters();
+        entityManager.clearItems();
+
+        const mapData = worldManager.getMapData();
+
+        // Spawn monsters
+        for (const monsterSpawn of mapData.monsterSpawns) {
+            entityManager.spawnMonsterFromTemplate(
+                monsterSpawn.monsterId,
+                monsterSpawn.position
+            );
+        }
+
+        // Spawn items
+        if (mapData.itemSpawns) {
+            for (const itemSpawn of mapData.itemSpawns) {
+                const item: any = {
+                    id: `item_${itemSpawn.itemId}_${Date.now()}`,
+                    type: 'item',
+                    name: 'Health Potion', // TODO: Load from item database
+                    description: 'Restores 50 HP',
+                    icon: '🧪',
+                    position: itemSpawn.position
+                };
+                entityManager.addItem(item);
+            }
+        }
+
+        // Notify all clients
+        io.emit(EVENTS.MAP_DATA, worldManager.getMap());
+
+        // Teleport all players to spawn points
+        const players = Object.values(entityManager.getAllPlayers());
+        for (const player of players) {
+            const spawnPoint = MapLoader.getRandomSpawnPoint(mapData, 'player');
+            entityManager.updatePlayerPosition(player.id, spawnPoint);
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error switching map:', error);
+        res.status(500).json({ error: 'Failed to switch map' });
+    }
+});
+
+app.get('/api/maps', (req, res) => {
+    res.json(MapLoader.listMaps());
+});
+
+app.get('/api/maps/:id', (req, res) => {
+    try {
+        const map = MapLoader.loadMap(req.params.id);
+        res.json(map);
+    } catch (error) {
+        res.status(404).json({ error: 'Map not found' });
+    }
 });
 
 app.post('/api/map', (req, res) => {
-    const mapData = req.body;
-    MapLoader.saveMap(mapData);
-    res.json({ success: true });
+    try {
+        const mapData = req.body;
+        MapLoader.saveMap(mapData);
+
+        // If this is the active map, reload it in WorldManager
+        if (worldManager.getMapData().id === mapData.id) {
+            console.log(`Reloading active map: ${mapData.id}`);
+            worldManager.loadMap(mapData.id);
+            // Notify all clients
+            io.emit(EVENTS.MAP_DATA, worldManager.getMap());
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving map:', error);
+        res.status(500).json({ error: 'Failed to save map' });
+    }
+});
+
+app.delete('/api/maps/:id', (req, res) => {
+    try {
+        MapLoader.deleteMap(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete map' });
+    }
 });
 
 // --- Swatches API ---
@@ -78,6 +167,7 @@ app.post('/api/swatches', (req, res) => {
     try {
         const swatches = req.body;
         fs.writeFileSync(SWATCHES_FILE, JSON.stringify(swatches, null, 4));
+        SwatchLoader.loadSwatches();
         res.json({ success: true });
     } catch (error) {
         console.error('Error saving swatches:', error);

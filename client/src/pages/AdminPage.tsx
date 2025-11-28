@@ -27,11 +27,34 @@ interface MapData {
     name: string;
     width: number;
     height: number;
+    description?: string;
+    spawnPoints?: Array<{ x: number; y: number; type: string }>;
+    tiles?: {
+        default: {
+            type: string;
+            walkable: boolean;
+            tileset: string;
+        };
+        regions: any[];
+    };
     monsterSpawns: Array<{
         monsterId: string;
         position: { x: number; y: number };
         respawnTime: number;
     }>;
+    itemSpawns?: Array<{
+        itemId: string;
+        position: { x: number; y: number };
+        respawnTime: number;
+    }>;
+    metadata?: {
+        difficulty: string;
+        recommendedLevel: number;
+        maxPlayers: number;
+        theme: string;
+        music?: string;
+        ambientSound?: string;
+    };
     placedSwatches?: Array<{
         x: number;
         y: number;
@@ -465,23 +488,192 @@ const SkillEditor = () => {
     );
 };
 
+const SwatchPreview = ({ swatch, image }: { swatch: any, image?: HTMLImageElement }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !swatch.tiles || swatch.tiles.length === 0) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const xs = swatch.tiles.map((t: any) => t.x);
+        const ys = swatch.tiles.map((t: any) => t.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
+        const width = maxX - minX + swatch.gridSize;
+        const height = maxY - minY + swatch.gridSize;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.clearRect(0, 0, width, height);
+
+        if (image) {
+            swatch.tiles.forEach((t: any) => {
+                ctx.drawImage(
+                    image,
+                    t.x, t.y, swatch.gridSize, swatch.gridSize,
+                    t.x - minX, t.y - minY, swatch.gridSize, swatch.gridSize
+                );
+            });
+        } else {
+            ctx.fillStyle = '#444';
+            swatch.tiles.forEach((t: any) => {
+                ctx.fillRect(t.x - minX, t.y - minY, swatch.gridSize, swatch.gridSize);
+                ctx.strokeStyle = '#666';
+                ctx.strokeRect(t.x - minX, t.y - minY, swatch.gridSize, swatch.gridSize);
+            });
+        }
+    }, [swatch, image]);
+
+    if (!swatch.tiles || swatch.tiles.length === 0) return <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>No Preview</div>;
+
+    const xs = swatch.tiles.map((t: any) => t.x);
+    const ys = swatch.tiles.map((t: any) => t.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    const width = maxX - minX + swatch.gridSize;
+    const height = maxY - minY + swatch.gridSize;
+
+    const CONTAINER_SIZE = 60;
+    const scale = Math.min(CONTAINER_SIZE / width, CONTAINER_SIZE / height, 1);
+
+    return (
+        <div style={{
+            width: '100%',
+            height: CONTAINER_SIZE,
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: '5px',
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: '4px'
+        }}>
+            <canvas
+                ref={canvasRef}
+                style={{
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'center center',
+                    imageRendering: 'pixelated'
+                }}
+            />
+        </div>
+    );
+};
+
 const MapEditor = () => {
+    const [currentMapId, setCurrentMapId] = useState<string | null>(null);
+    const [mapList, setMapList] = useState<string[]>([]);
     const [mapData, setMapData] = useState<MapData | null>(null);
+    const [activeMapId, setActiveMapId] = useState<string | null>(null);
     const [swatchSets, setSwatchSets] = useState<any[]>([]);
-    const [activeSetId, setActiveSetId] = useState<string>('');
+    const [activeSetId, setActiveSetId] = useState<string>('default_set');
     const [selectedSwatch, setSelectedSwatch] = useState<any | null>(null);
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Resource Cache
+    const [tilesetImages, setTilesetImages] = useState<Record<string, HTMLImageElement>>({});
+    const [tilesetMetadata, setTilesetMetadata] = useState<Record<string, any>>({});
 
     useEffect(() => {
-        fetchMap();
+        fetchMapList();
         fetchSwatches();
+        fetchActiveMap();
     }, []);
 
-    const fetchMap = async () => {
-        const res = await fetch('http://localhost:3000/api/map');
+    // Load Tileset Resources
+    useEffect(() => {
+        const loadResources = async () => {
+            const uniqueTilesets = new Set<string>();
+            swatchSets.forEach(set => {
+                set.swatches.forEach((s: any) => {
+                    if (s.tileset) uniqueTilesets.add(s.tileset);
+                });
+            });
+
+            const newImages: Record<string, HTMLImageElement> = { ...tilesetImages };
+            const newMetadata: Record<string, any> = { ...tilesetMetadata };
+            let hasUpdates = false;
+
+            for (const tileset of Array.from(uniqueTilesets)) {
+                if (!newImages[tileset]) {
+                    try {
+                        const res = await fetch(`http://localhost:3000/api/tilesets/${tileset}`);
+                        const data = await res.json();
+                        newMetadata[tileset] = data;
+
+                        const img = new Image();
+                        img.src = `/assets/tilesets/${data.texture}`;
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve;
+                            img.onerror = reject;
+                        });
+                        newImages[tileset] = img;
+                        hasUpdates = true;
+                    } catch (e) {
+                        console.error(`Failed to load tileset ${tileset}`, e);
+                    }
+                }
+            }
+
+            if (hasUpdates) {
+                setTilesetImages(newImages);
+                setTilesetMetadata(newMetadata);
+            }
+        };
+
+        if (swatchSets.length > 0) {
+            loadResources();
+        }
+    }, [swatchSets]);
+
+    useEffect(() => {
+        if (currentMapId) {
+            fetchMap(currentMapId);
+        } else {
+            setMapData(null);
+        }
+    }, [currentMapId]);
+
+    const fetchMapList = async () => {
+        const res = await fetch('http://localhost:3000/api/maps');
+        const data = await res.json();
+        setMapList(data);
+    };
+
+    const fetchActiveMap = async () => {
+        const res = await fetch('http://localhost:3000/api/active-map');
+        const data = await res.json();
+        setActiveMapId(data.id);
+    };
+
+    const handleSetActiveMap = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm(`Set "${id}" as the active server map? This will reload the world for all players.`)) return;
+
+        await fetch('http://localhost:3000/api/active-map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        setActiveMapId(id);
+        alert(`Map "${id}" is now active!`);
+    };
+
+    const fetchMap = async (id: string) => {
+        const res = await fetch(`http://localhost:3000/api/maps/${id}`);
         const data = await res.json();
         if (!data.placedSwatches) data.placedSwatches = [];
         setMapData(data);
@@ -494,16 +686,174 @@ const MapEditor = () => {
         if (data.length > 0) setActiveSetId(data[0].id);
     };
 
+    const handleCreateMap = async () => {
+        const name = prompt("Enter new Map name:");
+        if (!name) return;
+        const id = name.toLowerCase().replace(/\s+/g, '_');
+
+        if (mapList.includes(id)) {
+            alert("Map ID already exists!");
+            return;
+        }
+
+        const newMap: MapData = {
+            id,
+            name,
+            width: 50,
+            height: 50,
+            description: "New Map",
+            spawnPoints: [],
+            tiles: {
+                default: { type: "grass", walkable: true, tileset: "grass" },
+                regions: []
+            },
+            monsterSpawns: [],
+            itemSpawns: [],
+            metadata: {
+                difficulty: "easy",
+                recommendedLevel: 1,
+                maxPlayers: 10,
+                theme: "forest"
+            },
+            placedSwatches: []
+        };
+
+        await fetch('http://localhost:3000/api/map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newMap)
+        });
+
+        fetchMapList();
+        setCurrentMapId(id);
+    };
+
+    const handleDeleteMap = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (id === activeMapId) {
+            alert("Cannot delete the currently active map!");
+            return;
+        }
+        if (!confirm(`Are you sure you want to delete map "${id}"?`)) return;
+
+        await fetch(`http://localhost:3000/api/maps/${id}`, {
+            method: 'DELETE'
+        });
+
+        fetchMapList();
+        if (currentMapId === id) setCurrentMapId(null);
+    };
+
     const handleSave = async () => {
         if (!mapData) return;
-        alert('Saving ' + (mapData.placedSwatches?.length || 0) + ' swatches');
-        await fetch('http://localhost:3000/api/map', {
+        const res = await fetch('http://localhost:3000/api/map', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(mapData)
         });
-        alert('Map saved successfully!');
+        if (res.ok) {
+            alert('Map saved successfully!');
+        } else {
+            alert('Failed to save map!');
+        }
     };
+
+    // Canvas Rendering Loop
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !mapData) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Resize canvas to match container (or map size? Let's match container for viewport, but we need to handle transforms)
+        // Actually, let's make the canvas the size of the viewport and use transforms.
+        if (containerRef.current) {
+            canvas.width = containerRef.current.clientWidth;
+            canvas.height = containerRef.current.clientHeight;
+        }
+
+        // Clear
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+
+        // Apply Pan and Zoom
+        ctx.translate(pan.x, pan.y);
+        ctx.scale(zoom, zoom);
+
+        // Draw Map Background
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0, 0, mapData.width * 32, mapData.height * 32);
+
+        // Draw Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1 / zoom;
+        ctx.beginPath();
+        for (let x = 0; x <= mapData.width * 32; x += 32) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, mapData.height * 32);
+        }
+        for (let y = 0; y <= mapData.height * 32; y += 32) {
+            ctx.moveTo(0, y);
+            ctx.lineTo(mapData.width * 32, y);
+        }
+        ctx.stroke();
+
+        // Draw Placed Swatches
+        if (mapData.placedSwatches) {
+            // Optimization: Create a swatch lookup map
+            const swatchMap = new Map();
+            swatchSets.forEach(set => {
+                set.swatches.forEach((s: any) => swatchMap.set(s.id, s));
+            });
+
+            mapData.placedSwatches.forEach(p => {
+                const swatch = swatchMap.get(p.swatchId);
+                if (!swatch) return;
+
+                const img = tilesetImages[swatch.tileset];
+                if (!img) return;
+
+                swatch.tiles.forEach((t: any) => {
+                    // Calculate source coordinates
+                    // Assuming t.x, t.y are pixel coordinates in the texture
+                    // And we want to draw them at p.x + (t.x - minX), p.y + (t.y - minY)
+                    // Wait, existing logic was: left: t.x - swatchDef.tiles[0].x
+                    // Let's assume t.x/t.y in swatch definition are relative to the swatch's top-left?
+                    // No, usually they are absolute texture coordinates.
+                    // But when placing, we need to know the relative offset.
+
+                    // Let's find the top-left of the swatch in texture space to normalize
+                    // Actually, the previous logic: left: t.x - swatchDef.tiles[0].x
+                    // This assumes tiles[0] is the top-left-most tile. This might not be true if tiles are not sorted.
+                    // Let's calculate minX/minY for the swatch once.
+
+                    let minX = Infinity, minY = Infinity;
+                    swatch.tiles.forEach((st: any) => {
+                        if (st.x < minX) minX = st.x;
+                        if (st.y < minY) minY = st.y;
+                    });
+
+                    const mapGridSize = 32;
+                    const swatchGridSize = swatch.gridSize || 32;
+                    const scale = mapGridSize / swatchGridSize;
+
+                    const drawX = p.x + (t.x - minX) * scale;
+                    const drawY = p.y + (t.y - minY) * scale;
+
+                    ctx.drawImage(
+                        img,
+                        t.x, t.y, swatchGridSize, swatchGridSize, // Source
+                        drawX, drawY, mapGridSize, mapGridSize // Destination
+                    );
+                });
+            });
+        }
+
+        ctx.restore();
+
+    }, [mapData, pan, zoom, tilesetImages, tilesetMetadata, swatchSets]);
 
     const handleWheel = (e: React.WheelEvent) => {
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -511,7 +861,6 @@ const MapEditor = () => {
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        // alert('Map MouseDown: button=' + e.button);
         if (e.button === 1) {
             setIsPanning(true);
             return;
@@ -525,7 +874,6 @@ const MapEditor = () => {
         if (isPanning) {
             setPan(p => ({ x: p.x + e.movementX, y: p.y + e.movementY }));
         } else if (e.buttons === 1 && selectedSwatch) {
-            // Drag paint
             placeSwatch(e);
         }
     };
@@ -545,9 +893,6 @@ const MapEditor = () => {
         const gx = Math.floor(x / gridSize) * gridSize;
         const gy = Math.floor(y / gridSize) * gridSize;
 
-        // alert('Placed at ' + gx + ',' + gy);
-
-        // Check if already placed at this location (simple check)
         const existingIndex = mapData.placedSwatches?.findIndex(p => p.x === gx && p.y === gy);
 
         const newPlacement = {
@@ -573,12 +918,53 @@ const MapEditor = () => {
     const activeSet = swatchSets.find(s => s.id === activeSetId);
     const activeSwatches = activeSet ? activeSet.swatches : [];
 
+    if (!currentMapId) {
+        return (
+            <div>
+                <div className="editor-header">
+                    <h2 className="editor-title">Maps</h2>
+                    <button className="btn btn-primary" onClick={handleCreateMap}>+ New Map</button>
+                </div>
+                <div className="card-grid">
+                    {mapList.map(id => (
+                        <div key={id} className="card" onClick={() => setCurrentMapId(id)} style={{ border: activeMapId === id ? '2px solid #00ff00' : undefined }}>
+                            <h3>{id}</h3>
+                            <p>Map ID: {id}</p>
+                            {activeMapId === id && <p style={{ color: '#00ff00', fontWeight: 'bold' }}>Currently Active</p>}
+                            <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                                {activeMapId !== id && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        style={{ padding: '5px 10px', fontSize: '0.8rem' }}
+                                        onClick={(e) => handleSetActiveMap(id, e)}
+                                    >
+                                        Set Active
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-danger"
+                                    style={{ padding: '5px 10px', fontSize: '0.8rem' }}
+                                    onClick={(e) => handleDeleteMap(id, e)}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     if (!mapData) return <div>Loading map...</div>;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="editor-header">
-                <h2 className="editor-title">Map Editor ({mapData.name})</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button className="btn btn-secondary" onClick={() => setCurrentMapId(null)}>← Back</button>
+                    <h2 className="editor-title">Editing: {mapData.name}</h2>
+                </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button className="btn btn-primary" onClick={handleSave}>Save Map</button>
                     <button className="btn btn-secondary" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Reset View</button>
@@ -597,7 +983,7 @@ const MapEditor = () => {
                         {swatchSets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
 
-                    <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px', alignContent: 'start' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '8px', alignContent: 'start' }}>
                         {activeSwatches.map((s: any) => (
                             <div
                                 key={s.id}
@@ -607,13 +993,16 @@ const MapEditor = () => {
                                     borderRadius: '4px',
                                     border: selectedSwatch?.id === s.id ? '2px solid #ffcc00' : '1px solid #444',
                                     background: '#222',
-                                    padding: '4px',
+                                    padding: '8px',
                                     textAlign: 'center',
-                                    fontSize: '0.7rem'
+                                    fontSize: '0.7rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center'
                                 }}
                             >
-                                <div style={{ marginBottom: '4px' }}>{s.name}</div>
-                                <div style={{ color: '#666' }}>{s.gridSize}px</div>
+                                <SwatchPreview swatch={s} image={tilesetImages[s.tileset]} />
+                                <div style={{ fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{s.name}</div>
                             </div>
                         ))}
                     </div>
@@ -640,77 +1029,10 @@ const MapEditor = () => {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                 >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left: 0, top: 0,
-                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                            transformOrigin: '0 0',
-                            width: mapData.width * 32, // Assuming 32px grid
-                            height: mapData.height * 32,
-                            background: '#222'
-                        }}
-                    >
-                        {/* Grid Lines */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                width: '100%',
-                                height: '100%',
-                                backgroundImage: `
-                                    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
-                                    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
-                                `,
-                                backgroundSize: '32px 32px',
-                                pointerEvents: 'none'
-                            }}
-                        />
-
-                        {/* Placed Swatches */}
-                        {mapData.placedSwatches?.map(p => {
-                            // Find swatch
-                            let swatchDef = null;
-                            for (const set of swatchSets) {
-                                const found = set.swatches.find((s: any) => s.id === p.swatchId);
-                                if (found) {
-                                    swatchDef = found;
-                                    break;
-                                }
-                            }
-                            if (!swatchDef) return null;
-
-                            return (
-                                <div
-                                    key={p.instanceId}
-                                    style={{
-                                        position: 'absolute',
-                                        left: p.x,
-                                        top: p.y,
-                                        width: swatchDef.gridSize || 32,
-                                        height: swatchDef.gridSize || 32,
-                                        pointerEvents: 'none'
-                                    }}
-                                >
-                                    {/* Render tiles of the swatch */}
-                                    {swatchDef.tiles && swatchDef.tiles.length > 0 && swatchDef.tiles.map((t: any, i: number) => (
-                                        <div
-                                            key={i}
-                                            style={{
-                                                position: 'absolute',
-                                                left: t.x - swatchDef.tiles[0].x,
-                                                top: t.y - swatchDef.tiles[0].y,
-                                                width: swatchDef.gridSize,
-                                                height: swatchDef.gridSize,
-                                                backgroundImage: `url(/assets/tilesets/${swatchDef.tileset}.png)`,
-                                                backgroundPosition: `-${t.x}px -${t.y}px`,
-                                                backgroundSize: 'auto'
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <canvas
+                        ref={canvasRef}
+                        style={{ display: 'block', width: '100%', height: '100%' }}
+                    />
                 </div>
             </div>
         </div>
@@ -735,6 +1057,51 @@ const TilesetEditor = () => {
     // Swatch Data
     const [swatchSets, setSwatchSets] = useState<any[]>([]);
     const [activeSetId, setActiveSetId] = useState<string>('default_set');
+
+    // Resource Cache
+    const [tilesetImages, setTilesetImages] = useState<Record<string, HTMLImageElement>>({});
+
+    useEffect(() => {
+        const loadResources = async () => {
+            const uniqueTilesets = new Set<string>();
+            swatchSets.forEach(set => {
+                set.swatches.forEach((s: any) => {
+                    if (s.tileset) uniqueTilesets.add(s.tileset);
+                });
+            });
+
+            const newImages: Record<string, HTMLImageElement> = { ...tilesetImages };
+            let hasUpdates = false;
+
+            for (const tileset of Array.from(uniqueTilesets)) {
+                if (!newImages[tileset]) {
+                    try {
+                        const res = await fetch(`http://localhost:3000/api/tilesets/${tileset}`);
+                        const data = await res.json();
+
+                        const img = new Image();
+                        img.src = `/assets/tilesets/${data.texture}`;
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve;
+                            img.onerror = reject;
+                        });
+                        newImages[tileset] = img;
+                        hasUpdates = true;
+                    } catch (e) {
+                        console.error(`Failed to load tileset ${tileset}`, e);
+                    }
+                }
+            }
+
+            if (hasUpdates) {
+                setTilesetImages(newImages);
+            }
+        };
+
+        if (swatchSets.length > 0) {
+            loadResources();
+        }
+    }, [swatchSets]);
     const [swatchName, setSwatchName] = useState('');
     const [swatchWalkable, setSwatchWalkable] = useState(true);
 
@@ -1038,7 +1405,7 @@ const TilesetEditor = () => {
                             {swatchSets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
 
-                        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px', alignContent: 'start' }}>
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '8px', alignContent: 'start' }}>
                             {activeSwatches.map((s: any) => (
                                 <div
                                     key={s.id}
@@ -1049,43 +1416,14 @@ const TilesetEditor = () => {
                                         borderRadius: '4px',
                                         border: swatchName === s.name ? '2px solid #ffcc00' : '1px solid #444',
                                         background: '#222',
-                                        overflow: 'hidden',
+                                        padding: '8px',
                                         display: 'flex',
-                                        flexDirection: 'column'
+                                        flexDirection: 'column',
+                                        alignItems: 'center'
                                     }}
                                 >
-                                    <div style={{ width: '100%', aspectRatio: '1', position: 'relative', background: '#000' }}>
-                                        {/* Render preview using background-image trick */}
-                                        {s.tiles.length > 0 && (
-                                            <div style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                backgroundImage: `url(/assets/tilesets/${s.tileset}.png)`,
-                                                backgroundPosition: `-${s.tiles[0].x}px -${s.tiles[0].y}px`,
-                                                backgroundSize: 'cover', // This is tricky. We need actual pixel mapping.
-                                                // Better approach: Use a small canvas or just show the first tile if it's simple.
-                                                // Let's try to just show the first tile scaled up.
-                                                // If we know the texture size, we can use background-size: auto.
-                                                // But we don't know texture size here easily without loading it.
-                                                // Alternative: Just use a colored block or text if image loading is complex.
-                                                // Let's try a simpler approach: Just show the name and size for now, 
-                                                // but user asked for "grid view with name and size".
-                                            }}>
-                                                {/* 
-                                                    Ideally we'd use a canvas here to draw the specific tiles. 
-                                                    For now, let's use a placeholder icon or simple div.
-                                                */}
-                                                <div style={{
-                                                    width: '100%', height: '100%',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: '0.7rem', color: '#666'
-                                                }}>
-                                                    Preview
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                                    <SwatchPreview swatch={s} image={tilesetImages[s.tileset]} />
+                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center', width: '100%' }}>
                                         {s.name}
                                     </div>
                                     <div style={{ fontSize: '0.6rem', color: '#666', textAlign: 'center', paddingBottom: '2px' }}>
@@ -1255,35 +1593,53 @@ const TilesetEditor = () => {
     );
 };
 
+
 export function AdminPage() {
     const [activeTab, setActiveTab] = useState('monsters');
 
+    useEffect(() => {
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = styles;
+        document.head.appendChild(styleSheet);
+        return () => {
+            document.head.removeChild(styleSheet);
+        };
+    }, []);
+
     return (
-        <>
-            <style>{styles}</style>
-            <div className="admin-container">
-                <div className="sidebar">
-                    <div className="sidebar-header">VibeMaster Admin</div>
-                    <div className={`nav-item ${activeTab === 'monsters' ? 'active' : ''}`} onClick={() => setActiveTab('monsters')}>
-                        👾 Monsters
-                    </div>
-                    <div className={`nav-item ${activeTab === 'skills' ? 'active' : ''}`} onClick={() => setActiveTab('skills')}>
-                        ⚔️ Skills
-                    </div>
-                    <div className={`nav-item ${activeTab === 'map' ? 'active' : ''}`} onClick={() => setActiveTab('map')}>
-                        🗺️ Map
-                    </div>
-                    <div className={`nav-item ${activeTab === 'tilesets' ? 'active' : ''}`} onClick={() => setActiveTab('tilesets')}>
-                        🎨 Tilesets
-                    </div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', color: '#eee' }}>
+            <div style={{ display: 'flex', background: '#222', borderBottom: '1px solid #444' }}>
+                <div
+                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'monsters' ? '#333' : 'transparent', fontWeight: activeTab === 'monsters' ? 'bold' : 'normal' }}
+                    onClick={() => setActiveTab('monsters')}
+                >
+                    Monsters
                 </div>
-                <div className="main-content">
-                    {activeTab === 'monsters' && <MonsterEditor />}
-                    {activeTab === 'skills' && <SkillEditor />}
-                    {activeTab === 'map' && <MapEditor />}
-                    {activeTab === 'tilesets' && <TilesetEditor />}
+                <div
+                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'skills' ? '#333' : 'transparent', fontWeight: activeTab === 'skills' ? 'bold' : 'normal' }}
+                    onClick={() => setActiveTab('skills')}
+                >
+                    Skills
+                </div>
+                <div
+                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'maps' ? '#333' : 'transparent', fontWeight: activeTab === 'maps' ? 'bold' : 'normal' }}
+                    onClick={() => setActiveTab('maps')}
+                >
+                    Map Editor
+                </div>
+                <div
+                    style={{ padding: '15px 20px', cursor: 'pointer', background: activeTab === 'tilesets' ? '#333' : 'transparent', fontWeight: activeTab === 'tilesets' ? 'bold' : 'normal' }}
+                    onClick={() => setActiveTab('tilesets')}
+                >
+                    Tileset Editor
                 </div>
             </div>
-        </>
+            <div style={{ flex: 1, overflow: 'hidden', padding: '20px' }}>
+                {activeTab === 'monsters' && <MonsterEditor />}
+                {activeTab === 'skills' && <SkillEditor />}
+                {activeTab === 'maps' && <MapEditor />}
+                {activeTab === 'tilesets' && <TilesetEditor />}
+            </div>
+        </div>
     );
-}
+};

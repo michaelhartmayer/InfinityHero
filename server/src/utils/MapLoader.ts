@@ -123,6 +123,25 @@ export class MapLoader {
         }
     }
 
+    static listMaps(): string[] {
+        const mapsDir = path.join(__dirname, '..', '..', '..', 'databases', 'maps');
+        if (!fs.existsSync(mapsDir)) {
+            return [];
+        }
+        return fs.readdirSync(mapsDir)
+            .filter(file => file.endsWith('.json'))
+            .map(file => file.replace('.json', ''));
+    }
+
+    static deleteMap(mapId: string): void {
+        const mapPath = path.join(__dirname, '..', '..', '..', 'databases', 'maps', `${mapId}.json`);
+        if (fs.existsSync(mapPath)) {
+            fs.unlinkSync(mapPath);
+            this.mapsCache.delete(mapId);
+            console.log(`Deleted map: ${mapId}`);
+        }
+    }
+
     static clearCache(): void {
         this.mapsCache.clear();
     }

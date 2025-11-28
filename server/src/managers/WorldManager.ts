@@ -1,11 +1,16 @@
 import { WorldMap, Tile, TileType, CONSTANTS } from '@vibemaster/shared';
 import { MapLoader, type MapData } from '../utils/MapLoader.js';
+import { SwatchLoader } from '../utils/SwatchLoader.js';
 
 export class WorldManager {
-    private map: WorldMap;
-    private mapData: MapData;
+    private map!: WorldMap;
+    private mapData!: MapData;
 
     constructor(mapId: string = '01_starting_zone') {
+        this.loadMap(mapId);
+    }
+
+    public loadMap(mapId: string) {
         this.mapData = MapLoader.loadMap(mapId);
         this.map = this.generateMapFromData(this.mapData);
     }
@@ -64,6 +69,57 @@ export class WorldManager {
             }
         }
 
+        // Apply placed swatches
+        if (mapData.placedSwatches) {
+            for (const placement of mapData.placedSwatches) {
+                const swatch = SwatchLoader.getSwatch(placement.swatchId);
+                if (!swatch) continue;
+
+                // Assuming the first tile in the swatch is the anchor (0,0 relative)
+                // But swatch.tiles contains texture coordinates.
+                // We need to map the swatch tiles to the world grid.
+                // The swatch definition doesn't explicitly say "this tile is at 0,0, that one is at 1,0".
+                // However, based on the texture coordinates and grid size, we can infer the relative layout.
+                // BUT, the current Swatch structure in swatches.json is just a list of tiles.
+                // It seems the intention is that the tiles in the list correspond to a spatial arrangement?
+                // Or maybe we should assume the texture layout matches the spatial layout?
+                // Let's assume the texture coordinates relative to the top-left of the bounding box of the swatch tiles
+                // correspond to the spatial coordinates.
+
+                // Find bounding box of tiles in texture space
+                let minTx = Infinity, minTy = Infinity;
+                for (const t of swatch.tiles) {
+                    minTx = Math.min(minTx, t.x);
+                    minTy = Math.min(minTy, t.y);
+                }
+
+                for (const t of swatch.tiles) {
+                    // Calculate relative grid position
+                    // We assume 1 tile in world = swatch.gridSize in texture
+                    const relX = (t.x - minTx) / swatch.gridSize;
+                    const relY = (t.y - minTy) / swatch.gridSize;
+
+                    const worldX = placement.x / 32 + relX; // placement.x is in pixels (32px grid), so divide by 32
+                    const worldY = placement.y / 32 + relY;
+
+                    if (worldX >= 0 && worldX < width && worldY >= 0 && worldY < height) {
+                        // Update tile
+                        tiles[worldX][worldY] = {
+                            x: worldX,
+                            y: worldY,
+                            type: TileType.FLOOR, // Default to floor for swatches? Or keep underlying type?
+                            // Ideally we should have a 'custom' type or override rendering
+                            walkable: swatch.properties.walkable,
+                            tileset: swatch.tileset,
+                            textureCoords: { x: t.x, y: t.y },
+                            color: swatch.color,
+                            tileSize: swatch.gridSize
+                        };
+                    }
+                }
+            }
+        }
+
         return {
             width,
             height,
@@ -86,6 +142,11 @@ export class WorldManager {
             return false;
         }
         const tile = this.map.tiles[rx][ry];
+
+        // Check tile walkability (includes swatches)
+        if (!tile.walkable) return false;
+
+        // Fallback for legacy types if walkable property isn't set correctly (though it should be)
         if (tile.type === TileType.WALL || tile.type === TileType.WATER) return false;
 
         if (obstacles && obstacles.has(`${rx},${ry}`)) {

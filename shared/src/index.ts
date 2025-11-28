@@ -97,6 +97,10 @@ export interface Tile {
     y: number;
     type: TileType;
     walkable: boolean;
+    tileset?: string;
+    textureCoords?: { x: number, y: number };
+    color?: number; // Hex color for tinting
+    tileSize?: number; // Size of the tile in the texture
 }
 
 export interface WorldMap {

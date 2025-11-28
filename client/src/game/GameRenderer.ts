@@ -276,39 +276,124 @@ export class GameRenderer {
                 // Determine which tileset to use
                 let texture: THREE.Texture;
                 let tilesetName: string;
+                let uvs: number[] | null = null;
 
-                switch (tile.type) {
-                    case TileType.GRASS:
-                    case TileType.FLOOR:
+                if (tile.tileset && tile.textureCoords) {
+                    // Custom tileset from swatch
+                    // Map tileset name to texture
+                    if (tile.tileset.includes('grass')) {
                         texture = grassTexture;
                         tilesetName = 'grass';
-                        break;
-                    case TileType.WALL:
-                    case TileType.WATER:
+                    } else if (tile.tileset.includes('stone')) {
                         texture = stoneTexture;
                         tilesetName = 'stone';
-                        break;
-                    default:
+                    } else {
+                        // Fallback
                         texture = grassTexture;
                         tilesetName = 'grass';
+                    }
+
+                    // Calculate UVs manually based on textureCoords
+                    // We need to know the texture size.
+                    // Assuming tilesetLoader stores texture dimensions or we can get them from texture.image
+                    // But texture might not be fully loaded? It should be if we are here.
+
+                    if (texture.image) {
+                        const texWidth = texture.image.width;
+                        const texHeight = texture.image.height;
+                        const tX = tile.textureCoords.x;
+                        const tY = tile.textureCoords.y;
+                        // Assuming 32px grid size for now, or we need to know the swatch grid size.
+                        // But we don't have swatch grid size here.
+                        // However, we can assume standard tile size (e.g. 32 or 256 depending on tileset).
+                        // The swatches.json says gridSize: 32 or 256.
+                        // If we look at the texture coordinates, we can infer.
+                        // For now, let's assume the tile size is implied by the UV mapping logic.
+                        // Actually, we should probably fetch the tile size from the tileset definition if possible.
+                        // But we don't have easy access to it here without querying TilesetLoader more deeply.
+
+                        // Let's try to use a fixed size or infer from tileset name?
+                        // 'dev-tileset-grass' seems to use 32px? No, swatches.json says 32.
+                        // 'dev-tileset-stone' says 256.
+
+                        let tileSize = tile.tileSize || 32;
+                        if (!tile.tileSize && tilesetName === 'stone') tileSize = 256;
+
+                        // UVs: [0,1], [1,1], [0,0], [1,0] (TopLeft, TopRight, BottomLeft, BottomRight) ?
+                        // Three.js PlaneGeometry UVs are usually:
+                        // (0, 1) top-left
+                        // (1, 1) top-right
+                        // (0, 0) bottom-left
+                        // (1, 0) bottom-right
+                        // Wait, PlaneGeometry(1,1) UVs:
+                        // 0: (0, 1) - Top Left
+                        // 1: (1, 1) - Top Right
+                        // 2: (0, 0) - Bottom Left
+                        // 3: (1, 0) - Bottom Right
+
+                        // Texture Y is inverted in WebGL usually (0 is bottom).
+                        // But our coords are likely top-down pixel coords.
+
+                        const u0 = tX / texWidth;
+                        const v1 = 1 - (tY / texHeight); // Top
+                        const u1 = (tX + tileSize) / texWidth;
+                        const v0 = 1 - ((tY + tileSize) / texHeight); // Bottom
+
+                        // Standard UV order for PlaneGeometry is:
+                        // (0, 1), (1, 1), (0, 0), (1, 0)
+                        // wait, let's check standard.
+                        // actually it's by vertex index.
+                        // 0: -0.5, 0.5, 0 (Top Left) -> uv 0, 1
+                        // 1: 0.5, 0.5, 0 (Top Right) -> uv 1, 1
+                        // 2: -0.5, -0.5, 0 (Bottom Left) -> uv 0, 0
+                        // 3: 0.5, -0.5, 0 (Bottom Right) -> uv 1, 0
+
+                        uvs = [
+                            u0, v1, // Top Left
+                            u1, v1, // Top Right
+                            u0, v0, // Bottom Left
+                            u1, v0  // Bottom Right
+                        ];
+                    }
+
+                } else {
+                    // Standard tile generation
+                    switch (tile.type) {
+                        case TileType.GRASS:
+                        case TileType.FLOOR:
+                            texture = grassTexture;
+                            tilesetName = 'grass';
+                            break;
+                        case TileType.WALL:
+                        case TileType.WATER:
+                            texture = stoneTexture;
+                            tilesetName = 'stone';
+                            break;
+                        default:
+                            texture = grassTexture;
+                            tilesetName = 'grass';
+                    }
+
+                    // Get a random tile variant for variety
+                    const randomTile = this.tilesetLoader.getRandomTile(tilesetName);
+                    if (randomTile) {
+                        uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id);
+                    }
                 }
 
-                // Get a random tile variant for variety
-                const randomTile = this.tilesetLoader.getRandomTile(tilesetName);
-                if (!randomTile) continue;
+                if (!uvs) continue;
 
                 // Create geometry with custom UVs
                 const geometry = new THREE.PlaneGeometry(1, 1);
-                const uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id);
-
-                if (uvs) {
-                    const uvAttribute = new THREE.Float32BufferAttribute(uvs, 2);
-                    geometry.setAttribute('uv', uvAttribute);
-                }
+                const uvAttribute = new THREE.Float32BufferAttribute(uvs, 2);
+                geometry.setAttribute('uv', uvAttribute);
 
                 const material = new THREE.MeshStandardMaterial({
-                    map: texture,
-                    side: THREE.FrontSide
+                    map: texture!,
+                    side: THREE.FrontSide,
+                    transparent: true, // Enable transparency for swatches
+                    alphaTest: 0.5,
+                    color: tile.color !== undefined ? tile.color : 0xffffff // Apply tint if present
                 });
 
                 const mesh = new THREE.Mesh(geometry, material);
