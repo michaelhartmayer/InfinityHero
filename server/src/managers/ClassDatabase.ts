@@ -19,6 +19,11 @@ export class ClassDatabase {
         this.loadTemplates();
     }
 
+    public reload() {
+        this.templates.clear();
+        this.loadTemplates();
+    }
+
     private loadTemplates() {
         try {
             if (!fs.existsSync(this.DB_PATH)) {

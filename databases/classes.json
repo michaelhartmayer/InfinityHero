@@ -1,3 +1,70 @@
 {
-    "classes": []
+    "classes": [
+        {
+            "id": "warrior",
+            "name": "Warrior",
+            "description": "A strong melee fighter with high durability.",
+            "icon": "sword",
+            "baseHp": 150,
+            "baseEnergy": 50,
+            "startingSkills": [
+                "melee"
+            ]
+        },
+        {
+            "id": "mage",
+            "name": "Mage",
+            "description": "A master of arcane arts with powerful spells.",
+            "icon": "staff",
+            "baseHp": 80,
+            "baseEnergy": 150,
+            "startingSkills": [
+                "melee"
+            ]
+        },
+        {
+            "id": "rogue",
+            "name": "Rogue",
+            "description": "A swift and deadly assassin who strikes from the shadows.",
+            "icon": "dagger",
+            "baseHp": 100,
+            "baseEnergy": 100,
+            "startingSkills": [
+                "melee"
+            ]
+        },
+        {
+            "id": "cleric",
+            "name": "Cleric",
+            "description": "A holy healer who supports allies and smites the undead.",
+            "icon": "cross",
+            "baseHp": 110,
+            "baseEnergy": 120,
+            "startingSkills": [
+                "melee"
+            ]
+        },
+        {
+            "id": "ranger",
+            "name": "Ranger",
+            "description": "A sharpshooter from the wilds, expert in ranged combat.",
+            "icon": "bow",
+            "baseHp": 120,
+            "baseEnergy": 80,
+            "startingSkills": [
+                "melee"
+            ]
+        },
+        {
+            "id": "paladin",
+            "name": "Paladin",
+            "description": "A holy warrior who combines martial prowess with divine magic.",
+            "icon": "shield",
+            "baseHp": 160,
+            "baseEnergy": 70,
+            "startingSkills": [
+                "melee"
+            ]
+        }
+    ]
 }

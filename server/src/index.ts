@@ -68,6 +68,7 @@ app.delete('/api/sprites/:id', (req, res) => {
 });
 
 app.get('/api/classes', (req, res) => {
+    classDatabase.reload();
     res.json(classDatabase.getAllTemplates());
 });
 
@@ -281,6 +282,7 @@ const monsterDatabase = new MonsterDatabase();
 const skillDatabase = new SkillDatabase();
 const spriteDatabase = new SpriteDatabase();
 const classDatabase = new ClassDatabase();
+console.log('Initialized Class Database');
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
 // Get map data for spawning
