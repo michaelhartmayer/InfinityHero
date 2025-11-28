@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // --- Types ---
 
@@ -32,7 +32,12 @@ interface MapData {
         position: { x: number; y: number };
         respawnTime: number;
     }>;
-    // Simplified for editor
+    placedSwatches?: Array<{
+        x: number;
+        y: number;
+        swatchId: string;
+        instanceId: string;
+    }>;
 }
 
 // --- Styles ---
@@ -462,52 +467,789 @@ const SkillEditor = () => {
 
 const MapEditor = () => {
     const [mapData, setMapData] = useState<MapData | null>(null);
-    const [jsonContent, setJsonContent] = useState('');
+    const [swatchSets, setSwatchSets] = useState<any[]>([]);
+    const [activeSetId, setActiveSetId] = useState<string>('');
+    const [selectedSwatch, setSelectedSwatch] = useState<any | null>(null);
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetchMap();
+        fetchSwatches();
     }, []);
 
     const fetchMap = async () => {
         const res = await fetch('http://localhost:3000/api/map');
         const data = await res.json();
+        if (!data.placedSwatches) data.placedSwatches = [];
         setMapData(data);
-        setJsonContent(JSON.stringify(data, null, 4));
+    };
+
+    const fetchSwatches = async () => {
+        const res = await fetch('http://localhost:3000/api/swatches');
+        const data = await res.json();
+        setSwatchSets(data);
+        if (data.length > 0) setActiveSetId(data[0].id);
     };
 
     const handleSave = async () => {
-        try {
-            const parsed = JSON.parse(jsonContent);
-            await fetch('http://localhost:3000/api/map', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: jsonContent
-            });
-            alert('Map saved successfully!');
-            fetchMap();
-        } catch (e) {
-            alert('Invalid JSON: ' + e);
+        if (!mapData) return;
+        alert('Saving ' + (mapData.placedSwatches?.length || 0) + ' swatches');
+        await fetch('http://localhost:3000/api/map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(mapData)
+        });
+        alert('Map saved successfully!');
+    };
+
+    const handleWheel = (e: React.WheelEvent) => {
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        setZoom(z => Math.min(Math.max(z * delta, 0.1), 5));
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        // alert('Map MouseDown: button=' + e.button);
+        if (e.button === 1) {
+            setIsPanning(true);
+            return;
+        }
+        if (e.button === 0 && selectedSwatch && mapData) {
+            placeSwatch(e);
         }
     };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (isPanning) {
+            setPan(p => ({ x: p.x + e.movementX, y: p.y + e.movementY }));
+        } else if (e.buttons === 1 && selectedSwatch) {
+            // Drag paint
+            placeSwatch(e);
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsPanning(false);
+    };
+
+    const placeSwatch = (e: React.MouseEvent) => {
+        if (!mapData || !selectedSwatch || !containerRef.current) return;
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = (e.clientX - rect.left - pan.x) / zoom;
+        const y = (e.clientY - rect.top - pan.y) / zoom;
+
+        const gridSize = 32;
+        const gx = Math.floor(x / gridSize) * gridSize;
+        const gy = Math.floor(y / gridSize) * gridSize;
+
+        // alert('Placed at ' + gx + ',' + gy);
+
+        // Check if already placed at this location (simple check)
+        const existingIndex = mapData.placedSwatches?.findIndex(p => p.x === gx && p.y === gy);
+
+        const newPlacement = {
+            x: gx,
+            y: gy,
+            swatchId: selectedSwatch.id,
+            instanceId: Math.random().toString(36).substr(2, 9)
+        };
+
+        let newPlacedSwatches = [...(mapData.placedSwatches || [])];
+        if (existingIndex !== undefined && existingIndex >= 0) {
+            newPlacedSwatches[existingIndex] = newPlacement;
+        } else {
+            newPlacedSwatches.push(newPlacement);
+        }
+
+        setMapData({
+            ...mapData,
+            placedSwatches: newPlacedSwatches
+        });
+    };
+
+    const activeSet = swatchSets.find(s => s.id === activeSetId);
+    const activeSwatches = activeSet ? activeSet.swatches : [];
 
     if (!mapData) return <div>Loading map...</div>;
 
     return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="editor-header">
                 <h2 className="editor-title">Map Editor ({mapData.name})</h2>
-                <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="btn btn-primary" onClick={handleSave}>Save Map</button>
+                    <button className="btn btn-secondary" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Reset View</button>
+                </div>
             </div>
-            <div className="form-container" style={{ maxWidth: '100%' }}>
-                <p style={{ marginBottom: '20px', color: '#aaa' }}>
-                    Direct JSON editing is enabled for full control over map properties, regions, and spawns.
-                </p>
-                <textarea
-                    className="form-textarea json-editor"
-                    value={jsonContent}
-                    onChange={e => setJsonContent(e.target.value)}
-                    spellCheck={false}
-                />
+
+            <div style={{ display: 'flex', gap: '20px', flex: 1, overflow: 'hidden' }}>
+                {/* Left Panel: Swatches */}
+                <div style={{ width: '250px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+                    <h4>Palette</h4>
+                    <select
+                        className="form-select"
+                        value={activeSetId}
+                        onChange={e => setActiveSetId(e.target.value)}
+                    >
+                        {swatchSets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px', alignContent: 'start' }}>
+                        {activeSwatches.map((s: any) => (
+                            <div
+                                key={s.id}
+                                onClick={() => setSelectedSwatch(s)}
+                                style={{
+                                    cursor: 'pointer',
+                                    borderRadius: '4px',
+                                    border: selectedSwatch?.id === s.id ? '2px solid #ffcc00' : '1px solid #444',
+                                    background: '#222',
+                                    padding: '4px',
+                                    textAlign: 'center',
+                                    fontSize: '0.7rem'
+                                }}
+                            >
+                                <div style={{ marginBottom: '4px' }}>{s.name}</div>
+                                <div style={{ color: '#666' }}>{s.gridSize}px</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#aaa' }}>
+                        Selected: {selectedSwatch ? selectedSwatch.name : 'None'}
+                    </div>
+                </div>
+
+                {/* Map View */}
+                <div
+                    ref={containerRef}
+                    style={{
+                        flex: 1,
+                        background: '#1a1a1a',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        userSelect: 'none',
+                        cursor: isPanning ? 'grabbing' : 'crosshair'
+                    }}
+                    onWheel={handleWheel}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                >
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: 0, top: 0,
+                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                            transformOrigin: '0 0',
+                            width: mapData.width * 32, // Assuming 32px grid
+                            height: mapData.height * 32,
+                            background: '#222'
+                        }}
+                    >
+                        {/* Grid Lines */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                width: '100%',
+                                height: '100%',
+                                backgroundImage: `
+                                    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+                                    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
+                                `,
+                                backgroundSize: '32px 32px',
+                                pointerEvents: 'none'
+                            }}
+                        />
+
+                        {/* Placed Swatches */}
+                        {mapData.placedSwatches?.map(p => {
+                            // Find swatch
+                            let swatchDef = null;
+                            for (const set of swatchSets) {
+                                const found = set.swatches.find((s: any) => s.id === p.swatchId);
+                                if (found) {
+                                    swatchDef = found;
+                                    break;
+                                }
+                            }
+                            if (!swatchDef) return null;
+
+                            return (
+                                <div
+                                    key={p.instanceId}
+                                    style={{
+                                        position: 'absolute',
+                                        left: p.x,
+                                        top: p.y,
+                                        width: swatchDef.gridSize || 32,
+                                        height: swatchDef.gridSize || 32,
+                                        pointerEvents: 'none'
+                                    }}
+                                >
+                                    {/* Render tiles of the swatch */}
+                                    {swatchDef.tiles && swatchDef.tiles.length > 0 && swatchDef.tiles.map((t: any, i: number) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                position: 'absolute',
+                                                left: t.x - swatchDef.tiles[0].x,
+                                                top: t.y - swatchDef.tiles[0].y,
+                                                width: swatchDef.gridSize,
+                                                height: swatchDef.gridSize,
+                                                backgroundImage: `url(/assets/tilesets/${swatchDef.tileset}.png)`,
+                                                backgroundPosition: `-${t.x}px -${t.y}px`,
+                                                backgroundSize: 'auto'
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TilesetEditor = () => {
+    const [tilesets, setTilesets] = useState<string[]>([]);
+    const [selectedTileset, setSelectedTileset] = useState<string | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [gridSize, setGridSize] = useState(32);
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+
+    // Selection state
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [isPanning, setIsPanning] = useState(false);
+    const [selectionStart, setSelectionStart] = useState<{ x: number, y: number } | null>(null);
+    const [selectionEnd, setSelectionEnd] = useState<{ x: number, y: number } | null>(null);
+    const [clickMode, setClickMode] = useState(false); // New Click Mode
+
+    // Swatch Data
+    const [swatchSets, setSwatchSets] = useState<any[]>([]);
+    const [activeSetId, setActiveSetId] = useState<string>('default_set');
+    const [swatchName, setSwatchName] = useState('');
+    const [swatchWalkable, setSwatchWalkable] = useState(true);
+
+    // Container ref for fit-to-view calculation
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        fetchTilesets();
+        fetchSwatches();
+    }, []);
+
+    const fetchTilesets = async () => {
+        const res = await fetch('http://localhost:3000/api/tilesets');
+        const data = await res.json();
+        setTilesets(data);
+    };
+
+    const fetchSwatches = async () => {
+        const res = await fetch('http://localhost:3000/api/swatches');
+        const data = await res.json();
+        setSwatchSets(data);
+        if (data.length > 0 && !activeSetId) {
+            setActiveSetId(data[0].id);
+        }
+    };
+
+    const handleSelect = async (name: string) => {
+        if (selectedTileset === name) return;
+        setSelectedTileset(name);
+        const res = await fetch(`http://localhost:3000/api/tilesets/${name}`);
+        const data = await res.json();
+        if (data.texture) setPreviewImage(data.texture);
+        if (data.tileSize) setGridSize(data.tileSize);
+        setSelectionStart(null);
+        setSelectionEnd(null);
+    };
+
+    const handleSwatchClick = async (swatch: any) => {
+        // 1. Select the tileset if not already selected
+        if (selectedTileset !== swatch.tileset) {
+            await handleSelect(swatch.tileset);
+        }
+
+        // 2. Set form data
+        setSwatchName(swatch.name);
+        setSwatchWalkable(swatch.properties?.walkable ?? true);
+        if (swatch.gridSize) setGridSize(swatch.gridSize);
+
+        // 3. Highlight the swatch area (calculate bounding box)
+        if (swatch.tiles && swatch.tiles.length > 0) {
+            const xs = swatch.tiles.map((t: any) => t.x);
+            const ys = swatch.tiles.map((t: any) => t.y);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+
+            setSelectionStart({ x: minX, y: minY });
+            setSelectionEnd({ x: maxX, y: maxY });
+        }
+    };
+
+    const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        if (containerRef.current) {
+            const img = e.currentTarget;
+            const container = containerRef.current;
+            const widthRatio = container.clientWidth / img.naturalWidth;
+            const heightRatio = container.clientHeight / img.naturalHeight;
+            const fitZoom = Math.min(widthRatio, heightRatio) * 0.9; // 90% fit
+            setZoom(fitZoom);
+
+            // Center it
+            const x = (container.clientWidth - img.naturalWidth * fitZoom) / 2;
+            const y = (container.clientHeight - img.naturalHeight * fitZoom) / 2;
+            setPan({ x, y });
+        }
+    };
+
+    const saveSwatchSets = async (newSets: any[]) => {
+        await fetch('http://localhost:3000/api/swatches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newSets)
+        });
+        setSwatchSets(newSets);
+    };
+
+    const createSet = () => {
+        const name = prompt("Enter new Swatch Set name:");
+        if (!name) return;
+        const id = name.toLowerCase().replace(/\s+/g, '_');
+        if (swatchSets.find(s => s.id === id)) {
+            alert("Set already exists!");
+            return;
+        }
+        const newSet = { id, name, swatches: [] };
+        const newSets = [...swatchSets, newSet];
+        saveSwatchSets(newSets);
+        setActiveSetId(id);
+    };
+
+    // --- Grid Interaction ---
+
+    const handleWheel = (e: React.WheelEvent) => {
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        setZoom(z => Math.min(Math.max(z * delta, 0.1), 5));
+    };
+
+    const getGridCoords = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - rect.left - pan.x) / zoom;
+        const y = (e.clientY - rect.top - pan.y) / zoom;
+
+        const gx = Math.floor(x / gridSize) * gridSize;
+        const gy = Math.floor(y / gridSize) * gridSize;
+        return { x: gx, y: gy };
+    };
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        // alert('Tileset MouseDown: ' + e.button);
+        if (!previewImage) return;
+
+        if (e.button === 1) { // Middle Mouse
+            e.preventDefault();
+            setIsPanning(true);
+            return;
+        }
+
+        if (e.button === 0) { // Left Click
+            const coords = getGridCoords(e);
+
+            if (clickMode) {
+                if (isSelecting) {
+                    // Finish selection
+                    setSelectionEnd(coords);
+                    setIsSelecting(false);
+                } else {
+                    // Start selection
+                    setSelectionStart(coords);
+                    setSelectionEnd(coords);
+                    setIsSelecting(true);
+                }
+            } else {
+                // Drag mode
+                setIsSelecting(true);
+                setSelectionStart(coords);
+                setSelectionEnd(coords);
+            }
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isPanning) {
+            setPan(p => ({ x: p.x + e.movementX, y: p.y + e.movementY }));
+            return;
+        }
+
+        if (isSelecting && selectionStart) {
+            const coords = getGridCoords(e);
+            setSelectionEnd(coords);
+        }
+    };
+
+    const handleMouseUp = () => {
+        if (!clickMode) {
+            setIsSelecting(false);
+        }
+        setIsPanning(false);
+    };
+
+    // --- Swatch Logic ---
+
+    const getSelectionBounds = () => {
+        if (!selectionStart || !selectionEnd) return null;
+        const minX = Math.min(selectionStart.x, selectionEnd.x);
+        const maxX = Math.max(selectionStart.x, selectionEnd.x);
+        const minY = Math.min(selectionStart.y, selectionEnd.y);
+        const maxY = Math.max(selectionStart.y, selectionEnd.y);
+        return { minX, maxX, minY, maxY, width: maxX - minX + gridSize, height: maxY - minY + gridSize };
+    };
+
+    const createSwatch = () => {
+        if (!selectedTileset || !selectionStart || !selectionEnd || !swatchName) {
+            alert('Please enter a swatch name and make a selection.');
+            return;
+        }
+
+        const bounds = getSelectionBounds();
+        if (!bounds) return;
+
+        // Create a new swatch entry
+        const tiles = [];
+        for (let y = bounds.minY; y <= bounds.maxY; y += gridSize) {
+            for (let x = bounds.minX; x <= bounds.maxX; x += gridSize) {
+                tiles.push({ x, y });
+            }
+        }
+
+        const newSwatch = {
+            id: swatchName.toLowerCase().replace(/\s+/g, '_'),
+            name: swatchName,
+            tileset: selectedTileset,
+            gridSize: gridSize, // Save current grid size
+            properties: {
+                walkable: swatchWalkable
+            },
+            tiles: tiles
+        };
+
+        // Find active set
+        const setIndex = swatchSets.findIndex(s => s.id === activeSetId);
+        if (setIndex === -1) {
+            alert("No active swatch set selected.");
+            return;
+        }
+
+        const updatedSets = [...swatchSets];
+        const activeSet = { ...updatedSets[setIndex] };
+
+        // Check if swatch exists in set
+        const existingIndex = activeSet.swatches.findIndex((s: any) => s.id === newSwatch.id);
+        if (existingIndex >= 0) {
+            if (!confirm(`Swatch "${newSwatch.name}" already exists in this set. Overwrite?`)) return;
+            activeSet.swatches[existingIndex] = newSwatch;
+        } else {
+            activeSet.swatches.push(newSwatch);
+        }
+
+        updatedSets[setIndex] = activeSet;
+        saveSwatchSets(updatedSets);
+        alert(`Swatch "${swatchName}" saved to set "${activeSet.name}".`);
+    };
+
+    const bounds = getSelectionBounds();
+    const lineWidth = Math.max(1 / zoom, 0.5);
+
+    const activeSet = swatchSets.find(s => s.id === activeSetId);
+    const activeSwatches = activeSet ? activeSet.swatches : [];
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className="editor-header">
+                <h2 className="editor-title">Tileset Editor</h2>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <label>Grid Size:</label>
+                    <input
+                        type="number"
+                        value={gridSize}
+                        onChange={(e) => setGridSize(parseInt(e.target.value) || 32)}
+                        className="form-input"
+                        style={{ width: '60px' }}
+                    />
+                    <label>Zoom: {Math.round(zoom * 100)}%</label>
+                    <button className="btn btn-secondary" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Reset View</button>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={clickMode} onChange={e => setClickMode(e.target.checked)} />
+                        Click Mode
+                    </label>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', flex: 1, overflow: 'hidden' }}>
+                {/* Left Panel: Tilesets & Swatches */}
+                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                    {/* Tileset List */}
+                    <div style={{ flex: 1, overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px', maxHeight: '30%' }}>
+                        <h4 style={{ marginTop: 0 }}>Tilesets</h4>
+                        {tilesets.map(name => (
+                            <div
+                                key={name}
+                                onClick={() => handleSelect(name)}
+                                style={{
+                                    padding: '4px 8px',
+                                    cursor: 'pointer',
+                                    borderRadius: '4px',
+                                    background: selectedTileset === name ? 'rgba(51, 51, 255, 0.2)' : 'transparent',
+                                    color: selectedTileset === name ? '#8080ff' : '#ccc',
+                                    marginBottom: '2px',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                {name}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Swatch Sets */}
+                    <div style={{ flex: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <h4 style={{ margin: 0 }}>Swatches</h4>
+                            <button className="btn btn-sm btn-secondary" onClick={createSet} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>+ Set</button>
+                        </div>
+
+                        <select
+                            className="form-select"
+                            value={activeSetId}
+                            onChange={e => setActiveSetId(e.target.value)}
+                            style={{ marginBottom: '10px' }}
+                        >
+                            {swatchSets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px', alignContent: 'start' }}>
+                            {activeSwatches.map((s: any) => (
+                                <div
+                                    key={s.id}
+                                    onClick={() => handleSwatchClick(s)}
+                                    title={`${s.name} (${s.gridSize}px)`}
+                                    style={{
+                                        cursor: 'pointer',
+                                        borderRadius: '4px',
+                                        border: swatchName === s.name ? '2px solid #ffcc00' : '1px solid #444',
+                                        background: '#222',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                >
+                                    <div style={{ width: '100%', aspectRatio: '1', position: 'relative', background: '#000' }}>
+                                        {/* Render preview using background-image trick */}
+                                        {s.tiles.length > 0 && (
+                                            <div style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                backgroundImage: `url(/assets/tilesets/${s.tileset}.png)`,
+                                                backgroundPosition: `-${s.tiles[0].x}px -${s.tiles[0].y}px`,
+                                                backgroundSize: 'cover', // This is tricky. We need actual pixel mapping.
+                                                // Better approach: Use a small canvas or just show the first tile if it's simple.
+                                                // Let's try to just show the first tile scaled up.
+                                                // If we know the texture size, we can use background-size: auto.
+                                                // But we don't know texture size here easily without loading it.
+                                                // Alternative: Just use a colored block or text if image loading is complex.
+                                                // Let's try a simpler approach: Just show the name and size for now, 
+                                                // but user asked for "grid view with name and size".
+                                            }}>
+                                                {/* 
+                                                    Ideally we'd use a canvas here to draw the specific tiles. 
+                                                    For now, let's use a placeholder icon or simple div.
+                                                */}
+                                                <div style={{
+                                                    width: '100%', height: '100%',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: '0.7rem', color: '#666'
+                                                }}>
+                                                    Preview
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                                        {s.name}
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', color: '#666', textAlign: 'center', paddingBottom: '2px' }}>
+                                        {s.gridSize}px
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Editor Area */}
+                {selectedTileset ? (
+                    <div style={{ flex: 1, display: 'flex', gap: '20px', overflow: 'hidden' }}>
+                        {/* Texture View */}
+                        <div
+                            ref={containerRef}
+                            style={{
+                                flex: 2,
+                                background: '#1a1a1a',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                position: 'relative',
+                                userSelect: 'none',
+                                cursor: isPanning ? 'grabbing' : 'crosshair'
+                            }}
+                            onWheel={handleWheel}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onClick={() => console.log('Container Clicked')} // Debug
+                        >
+                            {previewImage && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: 0, top: 0,
+                                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                                        transformOrigin: '0 0',
+                                        transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                                    }}
+                                >
+                                    <img
+                                        src={`/assets/tilesets/${previewImage}`}
+                                        alt="Tileset Preview"
+                                        style={{ display: 'block', maxWidth: 'none', pointerEvents: 'none', imageRendering: 'pixelated' }}
+                                        onDragStart={(e) => e.preventDefault()}
+                                        onLoad={handleImageLoad}
+                                    />
+                                    {/* Grid Overlay */}
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            backgroundImage: `
+                                                linear-gradient(to right, rgba(255,255,255,0.3) ${lineWidth}px, transparent ${lineWidth}px),
+                                                linear-gradient(to bottom, rgba(255,255,255,0.3) ${lineWidth}px, transparent ${lineWidth}px)
+                                            `,
+                                            backgroundSize: `${gridSize}px ${gridSize}px`,
+                                            pointerEvents: 'none'
+                                        }}
+                                    />
+                                    {/* Existing Swatches Highlight (from active set) */}
+                                    {activeSwatches.filter((s: any) => s.tileset === selectedTileset).map((s: any) => (
+                                        s.tiles.map((t: any, i: number) => (
+                                            <div
+                                                key={`${s.id}-${i}`}
+                                                title={`Swatch: ${s.name}`}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: t.x,
+                                                    top: t.y,
+                                                    width: s.gridSize || gridSize,
+                                                    height: s.gridSize || gridSize,
+                                                    border: `1px solid rgba(255, 200, 0, 0.5)`,
+                                                    backgroundColor: 'rgba(255, 200, 0, 0.2)',
+                                                    pointerEvents: 'none'
+                                                }}
+                                            />
+                                        ))
+                                    ))}
+                                    {/* Selection Highlight */}
+                                    {bounds && (
+                                        <div
+                                            style={{
+                                                position: 'absolute',
+                                                left: bounds.minX,
+                                                top: bounds.minY,
+                                                width: bounds.width,
+                                                height: bounds.height,
+                                                border: `${2 / zoom}px solid #ff00cc`,
+                                                backgroundColor: 'rgba(255, 0, 204, 0.2)',
+                                                pointerEvents: 'none',
+                                                boxShadow: `0 0 ${15 / zoom}px rgba(255, 0, 204, 0.5)`
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            )}
+                            <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', pointerEvents: 'none', textAlign: 'right' }}>
+                                Middle Mouse to Pan • Wheel to Zoom<br />
+                                Debug: Selecting={isSelecting.toString()}, Start={selectionStart ? `${selectionStart.x},${selectionStart.y}` : 'null'}, End={selectionEnd ? `${selectionEnd.x},${selectionEnd.y}` : 'null'}
+                            </div>
+                        </div>
+
+                        {/* Swatch Builder Panel */}
+                        <div className="form-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', margin: 0, overflowY: 'auto' }}>
+                            <h3>Swatch Builder</h3>
+                            {bounds ? (
+                                <div>
+                                    <p style={{ color: '#aaa', marginBottom: '15px' }}>
+                                        Selected Area: {bounds.width / gridSize}x{bounds.height / gridSize} tiles
+                                        <br />
+                                        Start: ({bounds.minX}, {bounds.minY})
+                                    </p>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Swatch Name</label>
+                                        <input
+                                            className="form-input"
+                                            value={swatchName}
+                                            onChange={e => setSwatchName(e.target.value)}
+                                            placeholder="e.g. Grass, Stone Wall"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Properties</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={swatchWalkable}
+                                                onChange={e => setSwatchWalkable(e.target.checked)}
+                                                style={{ width: '20px', height: '20px' }}
+                                            />
+                                            <span>Walkable</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                                        <button className="btn btn-primary" onClick={createSwatch} style={{ flex: 1 }}>
+                                            Save Swatch
+                                        </button>
+                                        <button className="btn btn-danger" onClick={() => { setSelectionStart(null); setSelectionEnd(null); }}>
+                                            Clear Selection
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ color: '#666', textAlign: 'center', marginTop: '50px' }}>
+                                    Drag on the grid to select an area for your swatch.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#666' }}>
+                        Select a tileset to edit
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -531,11 +1273,15 @@ export function AdminPage() {
                     <div className={`nav-item ${activeTab === 'map' ? 'active' : ''}`} onClick={() => setActiveTab('map')}>
                         🗺️ Map
                     </div>
+                    <div className={`nav-item ${activeTab === 'tilesets' ? 'active' : ''}`} onClick={() => setActiveTab('tilesets')}>
+                        🎨 Tilesets
+                    </div>
                 </div>
                 <div className="main-content">
                     {activeTab === 'monsters' && <MonsterEditor />}
                     {activeTab === 'skills' && <SkillEditor />}
                     {activeTab === 'map' && <MapEditor />}
+                    {activeTab === 'tilesets' && <TilesetEditor />}
                 </div>
             </div>
         </>

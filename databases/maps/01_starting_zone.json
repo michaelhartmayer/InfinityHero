@@ -6,11 +6,6 @@
     "description": "A peaceful starting area with grassy fields surrounded by stone walls and a small pond.",
     "spawnPoints": [
         {
-            "x": 25,
-            "y": 25,
-            "type": "player"
-        },
-        {
             "x": 15,
             "y": 15,
             "type": "player"
@@ -176,32 +171,32 @@
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 15,
-                "y": 20
+                "x": 21.882148869802236,
+                "y": 8.117851130197757
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 35,
-                "y": 20
+                "x": 39,
+                "y": 6
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 15,
-                "y": 30
+                "x": 4,
+                "y": 5
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 35,
-                "y": 30
+                "x": 26,
+                "y": 9
             },
             "respawnTime": 30000
         }
@@ -231,5 +226,6 @@
         "theme": "grassland",
         "music": "peaceful_meadow",
         "ambientSound": "birds_chirping"
-    }
+    },
+    "placedSwatches": []
 }

@@ -58,6 +58,91 @@ app.post('/api/map', (req, res) => {
     res.json({ success: true });
 });
 
+// --- Swatches API ---
+const SWATCHES_FILE = path.join(process.cwd(), '../databases/swatches.json');
+
+app.get('/api/swatches', (req, res) => {
+    try {
+        if (!fs.existsSync(SWATCHES_FILE)) {
+            return res.json([]);
+        }
+        const content = fs.readFileSync(SWATCHES_FILE, 'utf-8');
+        res.json(JSON.parse(content));
+    } catch (error) {
+        console.error('Error reading swatches:', error);
+        res.status(500).json({ error: 'Failed to read swatches' });
+    }
+});
+
+app.post('/api/swatches', (req, res) => {
+    try {
+        const swatches = req.body;
+        fs.writeFileSync(SWATCHES_FILE, JSON.stringify(swatches, null, 4));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving swatches:', error);
+        res.status(500).json({ error: 'Failed to save swatches' });
+    }
+});
+
+// --- Tileset API ---
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Assuming server is running from server/dist or similar, we need to go up to root then to client
+// But simpler to rely on process.cwd() if we know where we run from.
+// Let's assume process.cwd() is the 'server' directory as per package.json scripts.
+const TILESETS_DIR = path.join(process.cwd(), '../client/public/assets/tilesets');
+
+app.get('/api/tilesets', (req, res) => {
+    try {
+        if (!fs.existsSync(TILESETS_DIR)) {
+            return res.json([]);
+        }
+        const files = fs.readdirSync(TILESETS_DIR);
+        const tilesets = files
+            .filter(f => f.endsWith('.json'))
+            .map(f => f.replace('.json', ''));
+        res.json(tilesets);
+    } catch (error) {
+        console.error('Error listing tilesets:', error);
+        res.status(500).json({ error: 'Failed to list tilesets' });
+    }
+});
+
+app.get('/api/tilesets/:name', (req, res) => {
+    try {
+        const { name } = req.params;
+        const filePath = path.join(TILESETS_DIR, `${name}.json`);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Tileset not found' });
+        }
+        const content = fs.readFileSync(filePath, 'utf-8');
+        res.json(JSON.parse(content));
+    } catch (error) {
+        console.error('Error reading tileset:', error);
+        res.status(500).json({ error: 'Failed to read tileset' });
+    }
+});
+
+app.post('/api/tilesets/:name', (req, res) => {
+    try {
+        const { name } = req.params;
+        const filePath = path.join(TILESETS_DIR, `${name}.json`);
+        // Basic validation
+        JSON.parse(JSON.stringify(req.body)); // Ensure valid JSON
+        fs.writeFileSync(filePath, JSON.stringify(req.body, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving tileset:', error);
+        res.status(500).json({ error: 'Failed to save tileset' });
+    }
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {

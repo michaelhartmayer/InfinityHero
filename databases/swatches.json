@@ -1,0 +1,451 @@
+[
+    {
+        "id": "default_set",
+        "name": "Default Set",
+        "swatches": [
+            {
+                "id": "earth_cracked",
+                "name": "earth_cracked",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 32,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 0,
+                        "y": 0
+                    },
+                    {
+                        "x": 256,
+                        "y": 0
+                    },
+                    {
+                        "x": 0,
+                        "y": 256
+                    },
+                    {
+                        "x": 256,
+                        "y": 256
+                    }
+                ]
+            },
+            {
+                "id": "earth_plain",
+                "name": "earth_plain",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 32,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 512,
+                        "y": 0
+                    },
+                    {
+                        "x": 768,
+                        "y": 0
+                    },
+                    {
+                        "x": 512,
+                        "y": 256
+                    },
+                    {
+                        "x": 768,
+                        "y": 256
+                    }
+                ]
+            },
+            {
+                "id": "earth_bare",
+                "name": "earth_bare",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 32,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 0,
+                        "y": 512
+                    },
+                    {
+                        "x": 256,
+                        "y": 512
+                    },
+                    {
+                        "x": 0,
+                        "y": 768
+                    },
+                    {
+                        "x": 256,
+                        "y": 768
+                    }
+                ]
+            },
+            {
+                "id": "earth_bare_cracked",
+                "name": "earth_bare_cracked",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 32,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 512,
+                        "y": 512
+                    },
+                    {
+                        "x": 768,
+                        "y": 512
+                    },
+                    {
+                        "x": 512,
+                        "y": 768
+                    },
+                    {
+                        "x": 768,
+                        "y": 768
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "test_set",
+        "name": "Test Set",
+        "swatches": [
+            {
+                "id": "earth_cracked",
+                "name": "earth_cracked",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 0,
+                        "y": 0
+                    },
+                    {
+                        "x": 256,
+                        "y": 0
+                    },
+                    {
+                        "x": 0,
+                        "y": 256
+                    },
+                    {
+                        "x": 256,
+                        "y": 256
+                    }
+                ]
+            },
+            {
+                "id": "earth_cracked2",
+                "name": "earth_cracked2",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 0,
+                        "y": 512
+                    },
+                    {
+                        "x": 256,
+                        "y": 512
+                    },
+                    {
+                        "x": 0,
+                        "y": 768
+                    },
+                    {
+                        "x": 256,
+                        "y": 768
+                    }
+                ]
+            },
+            {
+                "id": "earth_cracked3",
+                "name": "earth_cracked3",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 512,
+                        "y": 0
+                    },
+                    {
+                        "x": 768,
+                        "y": 0
+                    },
+                    {
+                        "x": 512,
+                        "y": 256
+                    },
+                    {
+                        "x": 768,
+                        "y": 256
+                    }
+                ]
+            },
+            {
+                "id": "earth_cracked4",
+                "name": "earth_cracked4",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 512,
+                        "y": 512
+                    },
+                    {
+                        "x": 768,
+                        "y": 512
+                    },
+                    {
+                        "x": 512,
+                        "y": 768
+                    },
+                    {
+                        "x": 768,
+                        "y": 768
+                    }
+                ]
+            },
+            {
+                "id": "earth_cracked5",
+                "name": "earth_cracked5",
+                "tileset": "dev-tileset-grass",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 1024,
+                        "y": 0
+                    },
+                    {
+                        "x": 1280,
+                        "y": 0
+                    },
+                    {
+                        "x": 1024,
+                        "y": 256
+                    },
+                    {
+                        "x": 1280,
+                        "y": 256
+                    }
+                ]
+            },
+            {
+                "id": "big_wall_panel",
+                "name": "big_wall_panel",
+                "tileset": "dev-tileset-stone",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 0,
+                        "y": 0
+                    },
+                    {
+                        "x": 256,
+                        "y": 0
+                    },
+                    {
+                        "x": 512,
+                        "y": 0
+                    },
+                    {
+                        "x": 0,
+                        "y": 256
+                    },
+                    {
+                        "x": 256,
+                        "y": 256
+                    },
+                    {
+                        "x": 512,
+                        "y": 256
+                    },
+                    {
+                        "x": 0,
+                        "y": 512
+                    },
+                    {
+                        "x": 256,
+                        "y": 512
+                    },
+                    {
+                        "x": 512,
+                        "y": 512
+                    }
+                ]
+            },
+            {
+                "id": "big_wall_panel2",
+                "name": "big_wall_panel2",
+                "tileset": "dev-tileset-stone",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 1280,
+                        "y": 0
+                    },
+                    {
+                        "x": 1536,
+                        "y": 0
+                    },
+                    {
+                        "x": 1792,
+                        "y": 0
+                    },
+                    {
+                        "x": 1280,
+                        "y": 256
+                    },
+                    {
+                        "x": 1536,
+                        "y": 256
+                    },
+                    {
+                        "x": 1792,
+                        "y": 256
+                    },
+                    {
+                        "x": 1280,
+                        "y": 512
+                    },
+                    {
+                        "x": 1536,
+                        "y": 512
+                    },
+                    {
+                        "x": 1792,
+                        "y": 512
+                    }
+                ]
+            },
+            {
+                "id": "vertical_wall",
+                "name": "vertical_wall",
+                "tileset": "dev-tileset-stone",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 1024,
+                        "y": 0
+                    },
+                    {
+                        "x": 1024,
+                        "y": 256
+                    },
+                    {
+                        "x": 1024,
+                        "y": 512
+                    },
+                    {
+                        "x": 1024,
+                        "y": 768
+                    }
+                ]
+            },
+            {
+                "id": "vertical_wall2",
+                "name": "vertical_wall2",
+                "tileset": "dev-tileset-stone",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 1536,
+                        "y": 768
+                    },
+                    {
+                        "x": 1536,
+                        "y": 1024
+                    },
+                    {
+                        "x": 1536,
+                        "y": 1280
+                    }
+                ]
+            },
+            {
+                "id": "horizontal_wall",
+                "name": "horizontal_wall",
+                "tileset": "dev-tileset-stone",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 1280,
+                        "y": 1024
+                    },
+                    {
+                        "x": 1536,
+                        "y": 1024
+                    },
+                    {
+                        "x": 1792,
+                        "y": 1024
+                    }
+                ]
+            },
+            {
+                "id": "horizontal_wall_strip",
+                "name": "horizontal_wall_strip",
+                "tileset": "dev-tileset-stone",
+                "gridSize": 256,
+                "properties": {
+                    "walkable": true
+                },
+                "tiles": [
+                    {
+                        "x": 1024,
+                        "y": 1536
+                    },
+                    {
+                        "x": 1280,
+                        "y": 1536
+                    },
+                    {
+                        "x": 1536,
+                        "y": 1536
+                    },
+                    {
+                        "x": 1792,
+                        "y": 1536
+                    }
+                ]
+            }
+        ]
+    }
+]

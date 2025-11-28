@@ -51,6 +51,12 @@ export interface MapData {
         music?: string;
         ambientSound?: string;
     };
+    placedSwatches?: Array<{
+        x: number;
+        y: number;
+        swatchId: string;
+        instanceId: string;
+    }>;
 }
 
 export class MapLoader {
