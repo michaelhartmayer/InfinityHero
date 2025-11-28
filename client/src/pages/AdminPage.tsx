@@ -1056,7 +1056,7 @@ const TilesetEditor = () => {
 
     // Swatch Data
     const [swatchSets, setSwatchSets] = useState<any[]>([]);
-    const [activeSetId, setActiveSetId] = useState<string>('default_set');
+    const [activeSetId, setActiveSetId] = useState<string>('');
 
     // Resource Cache
     const [tilesetImages, setTilesetImages] = useState<Record<string, HTMLImageElement>>({});
@@ -1123,7 +1123,7 @@ const TilesetEditor = () => {
         const res = await fetch('http://localhost:3000/api/swatches');
         const data = await res.json();
         setSwatchSets(data);
-        if (data.length > 0 && !activeSetId) {
+        if (data.length > 0 && (!activeSetId || !data.find((s: any) => s.id === activeSetId))) {
             setActiveSetId(data[0].id);
         }
     };

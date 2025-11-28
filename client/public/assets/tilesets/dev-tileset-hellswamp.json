@@ -1,0 +1,7 @@
+{
+  "texture": "dev-tileset-hellswamp.png",
+  "imageWidth": 2048,
+  "imageHeight": 2048,
+  "tileSize": 32,
+  "tiles": []
+}
