@@ -4,7 +4,7 @@
             "id": "warrior",
             "name": "Warrior",
             "description": "A strong melee fighter with high durability.",
-            "icon": "sword",
+            "icon": "⚔️",
             "baseHp": 150,
             "baseEnergy": 50,
             "startingSkills": [
@@ -15,7 +15,7 @@
             "id": "mage",
             "name": "Mage",
             "description": "A master of arcane arts with powerful spells.",
-            "icon": "staff",
+            "icon": "🔮",
             "baseHp": 80,
             "baseEnergy": 150,
             "startingSkills": [
@@ -26,7 +26,7 @@
             "id": "rogue",
             "name": "Rogue",
             "description": "A swift and deadly assassin who strikes from the shadows.",
-            "icon": "dagger",
+            "icon": "🗡️",
             "baseHp": 100,
             "baseEnergy": 100,
             "startingSkills": [
@@ -37,7 +37,7 @@
             "id": "cleric",
             "name": "Cleric",
             "description": "A holy healer who supports allies and smites the undead.",
-            "icon": "cross",
+            "icon": "✝️",
             "baseHp": 110,
             "baseEnergy": 120,
             "startingSkills": [
@@ -48,7 +48,7 @@
             "id": "ranger",
             "name": "Ranger",
             "description": "A sharpshooter from the wilds, expert in ranged combat.",
-            "icon": "bow",
+            "icon": "🏹",
             "baseHp": 120,
             "baseEnergy": 80,
             "startingSkills": [
@@ -59,7 +59,7 @@
             "id": "paladin",
             "name": "Paladin",
             "description": "A holy warrior who combines martial prowess with divine magic.",
-            "icon": "shield",
+            "icon": "🛡️",
             "baseHp": 160,
             "baseEnergy": 70,
             "startingSkills": [

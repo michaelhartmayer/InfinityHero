@@ -1,10 +1,29 @@
 import { type Player } from '@vibemaster/shared';
+import { useEffect, useState } from 'react';
+
+interface ClassData {
+    id: string;
+    icon: string;
+}
 
 interface HUDProps {
     player: Player;
 }
 
 export function HUD({ player }: HUDProps) {
+    const [classIcons, setClassIcons] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        fetch('http://localhost:3000/api/classes')
+            .then(res => res.json())
+            .then((data: ClassData[]) => {
+                const icons: Record<string, string> = {};
+                data.forEach(c => icons[c.id] = c.icon);
+                setClassIcons(icons);
+            })
+            .catch(err => console.error("Failed to load class icons:", err));
+    }, []);
+
     const hpPercent = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
     const energyPercent = Math.max(0, Math.min(100, (player.energy / player.maxEnergy) * 100));
 
@@ -12,17 +31,7 @@ export function HUD({ player }: HUDProps) {
         <div className="hud-container">
             <div className="hud-profile">
                 <div className="hud-avatar">
-                    {(() => {
-                        switch (player.class) {
-                            case 'warrior': return '⚔️';
-                            case 'mage': return '🔮';
-                            case 'rogue': return '🗡️';
-                            case 'cleric': return '✝️';
-                            case 'ranger': return '🏹';
-                            case 'paladin': return '🛡️';
-                            default: return '❓';
-                        }
-                    })()}
+                    {classIcons[player.class] || '❓'}
                 </div>
                 <div className="hud-info">
                     <div className="hud-name">{player.name}</div>

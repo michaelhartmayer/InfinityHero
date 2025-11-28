@@ -43,7 +43,8 @@ export class EntityManager {
             class: className,
             inventory: [],
             moveTarget: null,
-            movePath: []
+            movePath: [],
+            skills: randomClass ? randomClass.startingSkills : ['melee']
         };
         this.players[id] = player;
         return player;

@@ -5,7 +5,7 @@
             "name": "Melee",
             "description": "A basic melee attack.",
             "range": 1,
-            "icon": "sword",
+            "icon": "👊",
             "target": "target"
         }
     ]

@@ -242,7 +242,7 @@ export function GamePage() {
 
                 <div className="bottom-ui">
                     <ChatWindow messages={messages} onSendMessage={handleSendMessage} isChatMode={isChatMode} onSetChatMode={setIsChatMode} />
-                    <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} />
+                    <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} skills={localPlayer?.skills} />
                 </div>
 
                 {localPlayer && (

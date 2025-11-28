@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, NavLink, useNavigate, useParams, Navigate } from 'react-router-dom';
+import IconSelector from '../components/IconSelector';
 
 // --- Types ---
 
@@ -454,7 +455,10 @@ const SkillList = () => {
             <div className="card-grid">
                 {skills.map(s => (
                     <div key={s.id} className="card" onClick={() => navigate(s.id)}>
-                        <h3>{s.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '24px' }}>{s.icon || '❓'}</span>
+                            <h3>{s.name}</h3>
+                        </div>
                         <p>{s.description}</p>
                         <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>Range: {s.range} • {s.target}</p>
                     </div>
@@ -532,7 +536,7 @@ const SkillForm = () => {
                     </div>
                     <div className="form-group">
                         <label className="form-label">Icon</label>
-                        <input className="form-input" value={editing.icon} onChange={e => setEditing({ ...editing, icon: e.target.value })} required />
+                        <IconSelector value={editing.icon} onChange={(icon) => setEditing({ ...editing, icon })} />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Target Type</label>
@@ -1864,7 +1868,10 @@ const ClassList = () => {
             <div className="card-grid">
                 {classes.map(c => (
                     <div key={c.id} className="card" onClick={() => navigate(c.id)}>
-                        <h3>{c.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '24px' }}>{c.icon || '❓'}</span>
+                            <h3>{c.name}</h3>
+                        </div>
                         <p>{c.description}</p>
                         <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>HP: {c.baseHp} • Energy: {c.baseEnergy}</p>
                     </div>
@@ -1964,13 +1971,8 @@ const ClassForm = () => {
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">Icon (Sprite)</label>
-                    <select className="form-select" value={editing.icon} onChange={e => setEditing({ ...editing, icon: e.target.value })}>
-                        <option value="">Select a sprite...</option>
-                        {sprites.map(s => (
-                            <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
-                        ))}
-                    </select>
+                    <label className="form-label">Icon</label>
+                    <IconSelector value={editing.icon} onChange={(icon) => setEditing({ ...editing, icon })} />
                 </div>
 
                 <div className="form-group">

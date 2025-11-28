@@ -526,3 +526,27 @@
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* Emoji Picker Overrides */
+.EmojiPickerReact .epr-category-nav {
+  padding: 0 10px !important;
+  justify-content: center !important;
+  gap: 10px !important;
+}
+
+.EmojiPickerReact .epr-category-nav > button.epr-cat-btn {
+  padding: 5px !important;
+  border-radius: 5px !important;
+  transition: background 0.2s;
+}
+
+.EmojiPickerReact .epr-category-nav > button.epr-cat-btn:hover,
+.EmojiPickerReact .epr-category-nav > button.epr-cat-btn:focus {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Fix for "background leaking" - ensure buttons have solid background if needed or clear separation */
+.EmojiPickerReact .epr-category-nav > button.epr-cat-btn > span {
+  /* Ensure icon is visible */
+  opacity: 1 !important;
+}
