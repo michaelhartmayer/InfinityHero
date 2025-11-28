@@ -7,6 +7,7 @@ import { Inventory } from '../components/Inventory';
 import { HUD } from '../components/HUD';
 import { BottomBar } from '../components/BottomBar';
 import { BroadcastOverlay } from '../components/BroadcastOverlay';
+import { DebugPanel } from '../components/DebugPanel';
 import '../App.css';
 
 export function GamePage() {
@@ -232,6 +233,7 @@ export function GamePage() {
     return (
         <div className="App">
             <div className="ui-layer">
+                {socket?.id && <DebugPanel sessionId={socket.id} />}
                 {localPlayer && <HUD player={localPlayer} />}
 
                 <div className="center-ui">
