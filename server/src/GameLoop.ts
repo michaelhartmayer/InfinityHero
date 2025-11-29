@@ -85,11 +85,15 @@ export class GameLoop {
 
                         if (now - player.lastAttackTime >= attackCooldown) {
                             if (skillTemplate && skillTemplate.script) {
-                                this.scriptEngine.execute(skillTemplate.script, {
-                                    self: player,
-                                    target: target,
-                                    trigger: 'ACTIVATE'
-                                });
+                                // Check if skill is on cooldown
+                                if (!this.scriptEngine.isOnCooldown(player.id, skillId)) {
+                                    this.scriptEngine.execute(skillTemplate.script, {
+                                        self: player,
+                                        target: target,
+                                        trigger: 'ACTIVATE',
+                                        skillId: skillId  // Pass skill ID for cooldown tracking
+                                    });
+                                }
                             } else {
                                 const damage = 10; // Base damage
                                 const isDead = this.entityManager.applyDamage(target.id, damage, player.id);

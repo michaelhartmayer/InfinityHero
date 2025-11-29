@@ -7,7 +7,7 @@
             "range": 0,
             "icon": "⚔️",
             "target": "enemy",
-            "script": "# Cooldown\nATTACK cooldown 1000;\n\n# Attack for 5 base damage\nATTACK damage_target 5,$_target;"
+            "script": "# Cooldown\nACTIVATE cooldown 1000;\n\n# Attack for 5 base damage\nACTIVATE damage_target 5,$_target;"
         },
         {
             "id": "dev_self_heal",
