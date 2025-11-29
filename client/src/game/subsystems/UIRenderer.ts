@@ -48,8 +48,7 @@ export class UIRenderer {
         wrapper.appendChild(bubble);
 
         const label = new CSS2DObject(wrapper);
-        label.position.set(0, 1.7, 0);
-        label.position.set(0, 1.7, 0);
+        label.position.set(0, 1.4, 0);
         mesh.add(label);
 
         this.chatBubbles.set(playerId, {

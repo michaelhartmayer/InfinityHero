@@ -119,8 +119,16 @@ export class PlayerRenderer {
                 const div = document.createElement('div');
                 div.className = 'player-label';
                 div.textContent = player.name;
+                div.style.color = 'white';
+                div.style.textShadow = '0 0 4px black';
+                div.style.fontSize = '12px';
+                div.style.fontWeight = 'bold';
+                div.style.background = 'rgba(0,0,0,0.5)';
+                div.style.padding = '2px 4px';
+                div.style.borderRadius = '4px';
+
                 const label = new CSS2DObject(div);
-                label.position.set(0, 2.6, 0);
+                label.position.set(0, 1.0, 0);
                 mesh.add(label);
 
                 this.group.add(mesh);
@@ -157,13 +165,13 @@ export class PlayerRenderer {
 
             let healthBar = mesh.getObjectByName('healthBar') as THREE.Mesh;
             if (!healthBar) {
-                const bgGeo = new THREE.PlaneGeometry(0.8, 0.1);
+                const bgGeo = new THREE.PlaneGeometry(0.6, 0.1);
                 const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
                 const bgMesh = new THREE.Mesh(bgGeo, bgMat);
-                bgMesh.position.set(0, 1.15, 0);
+                bgMesh.position.set(0, 0.7, 0);
 
-                const fgGeo = new THREE.PlaneGeometry(0.8, 0.1);
-                const fgMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const fgGeo = new THREE.PlaneGeometry(0.6, 0.1);
+                const fgMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                 healthBar = new THREE.Mesh(fgGeo, fgMat);
                 healthBar.name = 'healthBar';
                 healthBar.position.z = 0.01;
