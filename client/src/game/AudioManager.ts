@@ -8,6 +8,7 @@ export class AudioManager {
     private hasInteracted: boolean = false;
 
     private audioContext: AudioContext | null = null;
+    private masterGain: GainNode | null = null;
     private bufferCache: Map<string, AudioBuffer> = new Map();
 
     private constructor() {
@@ -17,6 +18,9 @@ export class AudioManager {
         const initAudioContext = () => {
             if (!this.audioContext) {
                 this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                this.masterGain = this.audioContext.createGain();
+                this.masterGain.gain.value = this.isMuted ? 0 : 1;
+                this.masterGain.connect(this.audioContext.destination);
             }
             if (this.audioContext.state === 'suspended') {
                 this.audioContext.resume();
@@ -106,6 +110,8 @@ export class AudioManager {
 
     public setMuted(muted: boolean) {
         this.isMuted = muted;
+
+        // Mute music
         if (muted) {
             this.audio.volume = 0;
         } else {
@@ -113,6 +119,11 @@ export class AudioManager {
             if (this.currentUrl && this.audio.paused) {
                 this.tryPlay();
             }
+        }
+
+        // Mute SFX via master gain
+        if (this.masterGain) {
+            this.masterGain.gain.value = muted ? 0 : 1;
         }
     }
 
@@ -156,7 +167,11 @@ export class AudioManager {
         gainNode.gain.value = volume;
 
         source.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+        if (this.masterGain) {
+            gainNode.connect(this.masterGain);
+        } else {
+            gainNode.connect(this.audioContext.destination);
+        }
 
         source.start(0);
     }
@@ -209,7 +224,11 @@ export class AudioManager {
 
         source.connect(gainNode);
         gainNode.connect(panner);
-        panner.connect(this.audioContext.destination);
+        if (this.masterGain) {
+            panner.connect(this.masterGain);
+        } else {
+            panner.connect(this.audioContext.destination);
+        }
 
         source.start(0);
 
@@ -238,7 +257,11 @@ export class AudioManager {
         gainNode.gain.value = volume;
 
         source.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+        if (this.masterGain) {
+            gainNode.connect(this.masterGain);
+        } else {
+            gainNode.connect(this.audioContext.destination);
+        }
 
         source.start(0);
 

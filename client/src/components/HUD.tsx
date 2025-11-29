@@ -9,11 +9,9 @@ interface ClassData {
 
 interface HUDProps {
     player: Player;
-    isMuted?: boolean;
-    onToggleMute?: () => void;
 }
 
-export function HUD({ player, isMuted = false, onToggleMute }: HUDProps) {
+export function HUD({ player }: HUDProps) {
     const [classData, setClassData] = useState<Record<string, ClassData>>({});
 
     useEffect(() => {
@@ -61,16 +59,6 @@ export function HUD({ player, isMuted = false, onToggleMute }: HUDProps) {
                     </div>
                 </div>
             </div>
-
-            {onToggleMute && (
-                <button
-                    className="menu-btn"
-                    onClick={onToggleMute}
-                    title={isMuted ? "Unmute Music" : "Mute Music"}
-                >
-                    {isMuted ? '🔇' : '🔊'}
-                </button>
-            )}
         </div>
     );
 }

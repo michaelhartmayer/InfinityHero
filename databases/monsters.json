@@ -9,7 +9,7 @@
             "passiveStrategy": "wander",
             "attackStrategy": "melee_basic",
             "fleeStrategy": "low_hp",
-            "sprite": "slime_green",
+            "sprite": "spr_dev_monster",
             "spawnEffect": "shadow_step"
         },
         {

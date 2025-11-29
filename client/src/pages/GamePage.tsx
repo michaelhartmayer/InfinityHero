@@ -247,21 +247,22 @@ export function GamePage() {
                 {socket?.id && <DebugPanel sessionId={socket.id} animationInfo={debugInfo} />}
                 {socket && mapData && players[socket.id] && (
                     <>
-                        <HUD
-                            player={players[socket.id]}
-                            isMuted={isMuted}
-                            onToggleMute={() => {
-                                const newMuted = AudioManager.getInstance().toggleMute();
-                                setIsMuted(newMuted);
-                            }}
-                        />
+                        <HUD player={players[socket.id]} />
                         <div className="center-ui">
                             <BroadcastOverlay message={broadcastMessage} />
                         </div>
 
                         <div className="bottom-ui">
                             <ChatWindow messages={messages} onSendMessage={handleSendMessage} isChatMode={isChatMode} onSetChatMode={setIsChatMode} />
-                            <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} skills={localPlayer?.skills} />
+                            <BottomBar
+                                onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)}
+                                skills={localPlayer?.skills}
+                                isMuted={isMuted}
+                                onToggleMute={() => {
+                                    const newMuted = AudioManager.getInstance().toggleMute();
+                                    setIsMuted(newMuted);
+                                }}
+                            />
                         </div>
                     </>
                 )}
