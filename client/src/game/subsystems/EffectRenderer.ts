@@ -141,8 +141,10 @@ export class EffectRenderer {
         }
 
         const effect = new VisualEffect(config);
-        effect.group.rotation.x = Math.PI / 2; // Map XZ effect to XY world
-        effect.group.position.set(position.x, position.y, 0.1); // Slightly above ground
+        // Rotate 90° around X to map XZ plane (editor's view) to XY plane (game's view)
+        // Rotation.x = π/2 transforms: X→X, Y→Z, Z→-Y
+        effect.group.rotation.x = Math.PI / 2;
+        effect.group.position.set(position.x, position.y, 1.0); // Above sprites
         this.scene.add(effect.group);
         this.activeEffects.push(effect);
     }

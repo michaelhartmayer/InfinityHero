@@ -157,7 +157,7 @@ export class GameRenderer {
     public showDamage(targetId: string, damage: number, attackerId?: string) {
         this.uiRenderer.showDamage(targetId, damage, attackerId);
 
-        if (attackerId) {
+        if (attackerId && attackerId !== targetId) { // Don't change facing when casting on self
             // Calculate facing so they face each other
             const attackerPos = this.playerRenderer.getPosition(attackerId) || this.monsterRenderer.getPosition(attackerId);
             const targetPos = this.playerRenderer.getPosition(targetId) || this.monsterRenderer.getPosition(targetId);
