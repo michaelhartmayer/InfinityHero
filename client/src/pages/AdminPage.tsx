@@ -3156,7 +3156,8 @@ const EffectPreview = ({ effect }: { effect: Effect }) => {
                 0.1,
                 1000
             );
-            oCamera.position.set(0, 0, 5); // Top down
+            oCamera.position.set(0, 5, 0); // Top down
+            oCamera.up.set(0, 0, -1);
             oCamera.lookAt(0, 0, 0);
             camera = oCamera;
         }
@@ -3170,7 +3171,7 @@ const EffectPreview = ({ effect }: { effect: Effect }) => {
         // Grid helper
         const grid = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
         if (viewMode === '2d') {
-            grid.rotation.x = Math.PI / 2; // Rotate grid for top-down view if needed, or just keep it flat
+            // grid.rotation.x = Math.PI / 2; // Rotate grid for top-down view if needed, or just keep it flat
         }
         scene.add(grid);
 

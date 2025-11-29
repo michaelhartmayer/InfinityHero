@@ -66,7 +66,7 @@ export class EffectRenderer {
         const selectionGeo = new THREE.RingGeometry(0.4, 0.5, 32);
         const selectionMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
         this.selectionMesh = new THREE.Mesh(selectionGeo, selectionMat);
-        this.selectionMesh.rotation.x = -Math.PI / 2; // Flat on ground
+        // this.selectionMesh.rotation.x = -Math.PI / 2; // Already XY (flat on ground)
         this.selectionMesh.visible = false;
         this.scene.add(this.selectionMesh);
 
@@ -141,6 +141,7 @@ export class EffectRenderer {
         }
 
         const effect = new VisualEffect(config);
+        effect.group.rotation.x = Math.PI / 2; // Map XZ effect to XY world
         effect.group.position.set(position.x, position.y, 0.1); // Slightly above ground
         this.scene.add(effect.group);
         this.activeEffects.push(effect);

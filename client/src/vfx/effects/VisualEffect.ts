@@ -91,6 +91,7 @@ export class VisualEffect {
                 switch (layer.geometryType) {
                     case 'ring':
                         geometry = new THREE.RingGeometry(0.5, 1, 32);
+                        geometry.rotateX(-Math.PI / 2);
                         break;
                     case 'sphere':
                         geometry = new THREE.SphereGeometry(0.5, 16, 16);
