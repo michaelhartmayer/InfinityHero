@@ -16,6 +16,7 @@ interface Monster {
     attackStrategy: string;
     fleeStrategy: string;
     sprite?: string;
+    spawnEffect?: string;
 }
 
 interface Skill {
@@ -461,9 +462,14 @@ const MonsterForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [editing, setEditing] = useState<Monster | null>(null);
+    const [effects, setEffects] = useState<any[]>([]);
     const isNew = !id;
 
     useEffect(() => {
+        fetch('http://localhost:3000/api/effects')
+            .then(res => res.json())
+            .then(data => setEffects(data));
+
         if (!isNew && id) {
             // Fetch specific monster
             // Fetch all monsters and find the one we need
@@ -535,6 +541,19 @@ const MonsterForm = () => {
                 <div className="form-group">
                     <label className="form-label">Sprite</label>
                     <MonsterSpriteSelector value={editing.sprite} onChange={(val) => setEditing({ ...editing, sprite: val })} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Spawn Effect</label>
+                    <select
+                        className="form-select"
+                        value={editing.spawnEffect || ''}
+                        onChange={e => setEditing({ ...editing, spawnEffect: e.target.value })}
+                    >
+                        <option value="">-- No Effect --</option>
+                        {effects.map(eff => (
+                            <option key={eff.id} value={eff.id}>{eff.name}</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="form-group">
                     <label className="form-label">Strategies</label>

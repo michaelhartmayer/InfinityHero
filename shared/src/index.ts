@@ -52,6 +52,7 @@ export interface Monster extends Entity {
     moveTarget: Position | null;
     movePath: Position[];
     sprite?: string;
+    spawnEffect?: string;
 }
 
 export interface GameState {

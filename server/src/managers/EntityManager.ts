@@ -1,5 +1,5 @@
 import { Player, Position, CONSTANTS, Item, Monster, MonsterStrategyType } from '@vibemaster/shared';
-import { MonsterLoader } from '../utils/MonsterLoader.js';
+import { MonsterDatabase } from './MonsterDatabase.js';
 import { ClassDatabase } from './ClassDatabase.js';
 
 export class EntityManager {
@@ -8,11 +8,11 @@ export class EntityManager {
     private monsters: Record<string, Monster> = {};
 
     private classDatabase: ClassDatabase;
+    private monsterDatabase: MonsterDatabase;
 
-    constructor(classDatabase: ClassDatabase) {
+    constructor(classDatabase: ClassDatabase, monsterDatabase: MonsterDatabase) {
         this.classDatabase = classDatabase;
-        // Load monster database on initialization
-        MonsterLoader.loadDatabase();
+        this.monsterDatabase = monsterDatabase;
     }
 
     public addPlayer(id: string, name: string, spawnPosition?: Position): Player {
@@ -94,7 +94,7 @@ export class EntityManager {
     }
 
     public spawnMonsterFromTemplate(monsterId: string, position: Position): Monster | null {
-        const template = MonsterLoader.getMonster(monsterId);
+        const template = this.monsterDatabase.getTemplate(monsterId);
         if (!template) {
             console.error(`Monster template not found: ${monsterId}`);
             return null;
@@ -114,7 +114,8 @@ export class EntityManager {
             lastActionTime: Date.now(),
             moveTarget: null,
             movePath: [],
-            sprite: template.sprite
+            sprite: template.sprite,
+            spawnEffect: template.spawnEffect
         };
 
         this.monsters[id] = monster;
@@ -127,7 +128,7 @@ export class EntityManager {
         name: string,
         x: number,
         y: number,
-        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType, sprite?: string }
+        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType, sprite?: string, spawnEffect?: string }
     ): Monster {
         const hp = template?.hp || 50;
         const monster: Monster = {
@@ -143,7 +144,8 @@ export class EntityManager {
             lastActionTime: Date.now(),
             moveTarget: null,
             movePath: [],
-            sprite: template?.sprite
+            sprite: template?.sprite,
+            spawnEffect: template?.spawnEffect
         };
         this.monsters[id] = monster;
         return monster;

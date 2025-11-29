@@ -310,11 +310,15 @@ const io = new Server(httpServer, {
 
 const worldManager = new WorldManager('01_starting_zone');
 const classDatabase = new ClassDatabase();
-const entityManager = new EntityManager(classDatabase);
 const monsterDatabase = new MonsterDatabase();
+const entityManager = new EntityManager(classDatabase, monsterDatabase);
 const skillDatabase = new SkillDatabase();
 const spriteDatabase = new SpriteDatabase();
 const effectDatabase = new EffectDatabase();
+
+app.get('/api/effects', (req, res) => {
+    res.json(effectDatabase.getAllTemplates());
+});
 console.log('Initialized Class Database');
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 
@@ -488,7 +492,8 @@ io.on('connection', (socket) => {
                                                 hp: template.hp,
                                                 level: template.baseLevel,
                                                 strategy: MonsterStrategyType.PASSIVE,
-                                                sprite: template.sprite
+                                                sprite: template.sprite,
+                                                spawnEffect: template.spawnEffect
                                             }
                                         );
                                     }

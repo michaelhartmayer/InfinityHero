@@ -72,7 +72,7 @@ export class GameRenderer {
         this.playerRenderer = new PlayerRenderer(this.spriteLoader, this.effectRenderer.getShadowTexture(), localPlayerId);
         this.scene.add(this.playerRenderer.group);
 
-        this.monsterRenderer = new MonsterRenderer(this.spriteLoader, this.effectRenderer.getShadowTexture());
+        this.monsterRenderer = new MonsterRenderer(this.spriteLoader, this.effectRenderer.getShadowTexture(), this.effectRenderer);
         this.scene.add(this.monsterRenderer.group);
 
         this.itemRenderer = new ItemRenderer();

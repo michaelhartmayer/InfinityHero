@@ -4,6 +4,8 @@ import { type Monster, type WorldMap } from '@vibemaster/shared';
 import { SpriteLoader } from '../SpriteLoader';
 import { AnimationState } from '../AnimationConstants';
 
+import { EffectRenderer } from './EffectRenderer';
+
 export class MonsterRenderer {
     public group: THREE.Group;
     private monsterMeshes: Map<string, THREE.Mesh> = new Map();
@@ -18,11 +20,13 @@ export class MonsterRenderer {
 
     private spriteLoader: SpriteLoader;
     private shadowTexture: THREE.Texture;
+    private effectRenderer: EffectRenderer;
 
-    constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture) {
+    constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, effectRenderer: EffectRenderer) {
         this.group = new THREE.Group();
         this.spriteLoader = spriteLoader;
         this.shadowTexture = shadowTexture;
+        this.effectRenderer = effectRenderer;
     }
 
     public updateMonsters(monsters: Record<string, Monster>, mapData: WorldMap) {
@@ -67,6 +71,14 @@ export class MonsterRenderer {
                         animationTime: 0,
                         spriteId: monster.sprite || ''
                     });
+
+                    // Trigger spawn effect if configured
+                    if (monster.spawnEffect) {
+                        this.effectRenderer.playEffect(monster.spawnEffect, {
+                            x: monster.position.x - offsetX,
+                            y: monster.position.y - offsetY
+                        });
+                    }
                 } else {
                     // Update spriteId in existing state
                     const state = this.monsterStates.get(monster.id)!;

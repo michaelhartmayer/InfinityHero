@@ -1,13 +1,15 @@
 import * as THREE from 'three';
-import { type WorldMap } from '@vibemaster/shared';
+import { type WorldMap }
+    from '@vibemaster/shared';
 import { VFXLibrary } from '../../vfx/VFXLibrary';
+import { VisualEffect, type EffectConfig } from '../../vfx/effects/VisualEffect';
 import { CursorGroundEffect } from '../../vfx/effects/CursorGroundEffect';
 
 export const CursorState = {
-    PASSIVE: 0,
-    SELECT_TARGET: 1
+    PASSIVE: 'passive',
+    SELECT_TARGET: 'select_target'
 } as const;
-export type CursorState = typeof CursorState[keyof typeof CursorState];
+export type CursorStateType = typeof CursorState[keyof typeof CursorState];
 
 export class EffectRenderer {
     private scene: THREE.Scene;
@@ -16,11 +18,14 @@ export class EffectRenderer {
 
     private vfxLibrary: VFXLibrary;
     private cursorGroundEffect: CursorGroundEffect;
-    private highlightMesh: THREE.LineSegments;
+    private highlightMesh: THREE.Mesh;
     private selectionMesh: THREE.Mesh;
     private shadowTexture: THREE.Texture;
 
-    private cursorState: CursorState = CursorState.PASSIVE;
+    private activeEffects: VisualEffect[] = [];
+    private effectConfigs: Map<string, EffectConfig> = new Map();
+
+    private cursorState: CursorStateType = CursorState.PASSIVE;
     private cursorPosition: { x: number, y: number } | null = null;
 
     constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.OrthographicCamera) {
@@ -30,14 +35,30 @@ export class EffectRenderer {
 
         this.vfxLibrary = new VFXLibrary(this.renderer, this.scene, this.camera);
 
+        // Load effect definitions
+        fetch('http://localhost:3000/api/effects')
+            .then(res => res.json())
+            .then((data: EffectConfig[]) => {
+                data.forEach(config => {
+                    this.effectConfigs.set(config.id, config);
+                });
+                console.log(`✨ Loaded ${data.length} effect definitions`);
+            })
+            .catch(err => console.error('Failed to load effects:', err));
+
         // Cursor ground effect
         this.cursorGroundEffect = new CursorGroundEffect();
         this.scene.add(this.cursorGroundEffect.group);
 
         // Highlight Mesh
-        const highlightGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 0.1));
-        const highlightMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
-        this.highlightMesh = new THREE.LineSegments(highlightGeo, highlightMat);
+        const geometry = new THREE.PlaneGeometry(1, 1);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xffff00,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        this.highlightMesh = new THREE.Mesh(geometry, material);
         this.highlightMesh.visible = false;
         this.scene.add(this.highlightMesh);
 
@@ -74,7 +95,7 @@ export class EffectRenderer {
         return this.shadowTexture;
     }
 
-    public setCursorState(state: CursorState) {
+    public setCursorState(state: CursorStateType) {
         this.cursorState = state;
 
         if (state === CursorState.PASSIVE) {
@@ -112,11 +133,35 @@ export class EffectRenderer {
         }
     }
 
+    public playEffect(effectId: string, position: { x: number, y: number }) {
+        const config = this.effectConfigs.get(effectId);
+        if (!config) {
+            console.warn(`[EffectRenderer] Effect config not found: ${effectId}`);
+            return;
+        }
+
+        const effect = new VisualEffect(config);
+        effect.group.position.set(position.x, position.y, 0.1); // Slightly above ground
+        this.scene.add(effect.group);
+        this.activeEffects.push(effect);
+    }
+
     public update(dt: number) {
         // Animate highlight
         if (this.highlightMesh.visible) {
-            const scale = 1 + Math.sin(Date.now() * 0.005) * 0.05;
-            this.highlightMesh.scale.set(scale, scale, 1);
+            const time = Date.now() / 1000;
+            (this.highlightMesh.material as THREE.MeshBasicMaterial).opacity = 0.3 + Math.sin(time * 5) * 0.1;
+        }
+
+        // Update active effects
+        for (let i = this.activeEffects.length - 1; i >= 0; i--) {
+            const effect = this.activeEffects[i];
+            effect.update(dt);
+            if (effect.isDead) {
+                this.scene.remove(effect.group);
+                effect.dispose();
+                this.activeEffects.splice(i, 1);
+            }
         }
 
         // Animate cursor effect

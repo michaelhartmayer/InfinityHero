@@ -15,6 +15,7 @@ export interface MonsterTemplate {
     attackStrategy: string;
     fleeStrategy: string;
     sprite?: string;
+    spawnEffect?: string;
 }
 
 export interface MonsterDatabase {
