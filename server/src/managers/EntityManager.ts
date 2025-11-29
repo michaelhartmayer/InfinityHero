@@ -127,7 +127,7 @@ export class EntityManager {
         name: string,
         x: number,
         y: number,
-        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType }
+        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType, sprite?: string }
     ): Monster {
         const hp = template?.hp || 50;
         const monster: Monster = {
@@ -142,7 +142,8 @@ export class EntityManager {
             strategy: template?.strategy || MonsterStrategyType.PASSIVE,
             lastActionTime: Date.now(),
             moveTarget: null,
-            movePath: []
+            movePath: [],
+            sprite: template?.sprite
         };
         this.monsters[id] = monster;
         return monster;

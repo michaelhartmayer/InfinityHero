@@ -8,6 +8,8 @@ interface ChatWindowProps {
 
 export function ChatWindow({ messages, onSendMessage, isChatMode, onSetChatMode }: ChatWindowProps & { isChatMode: boolean, onSetChatMode: (mode: boolean) => void }) {
     const [input, setInput] = useState('');
+    const [history, setHistory] = useState<string[]>([]);
+    const [historyIndex, setHistoryIndex] = useState<number>(-1);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,9 +33,33 @@ export function ChatWindow({ messages, onSendMessage, isChatMode, onSetChatMode 
         e.preventDefault();
         if (input.trim()) {
             onSendMessage(input);
+            setHistory(prev => [input, ...prev].slice(0, 10));
+            setHistoryIndex(-1);
             setInput('');
         } else {
             onSetChatMode(false);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (historyIndex < history.length - 1) {
+                const newIndex = historyIndex + 1;
+                setHistoryIndex(newIndex);
+                setInput(history[newIndex]);
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyIndex > -1) {
+                const newIndex = historyIndex - 1;
+                setHistoryIndex(newIndex);
+                if (newIndex === -1) {
+                    setInput('');
+                } else {
+                    setInput(history[newIndex]);
+                }
+            }
         }
     };
 
@@ -61,6 +87,7 @@ export function ChatWindow({ messages, onSendMessage, isChatMode, onSetChatMode 
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     onClick={() => onSetChatMode(true)}
                     placeholder={isChatMode ? "Type a message..." : "Press Enter to chat..."}
                     className="chat-input"

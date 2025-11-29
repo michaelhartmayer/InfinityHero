@@ -487,7 +487,8 @@ io.on('connection', (socket) => {
                                             {
                                                 hp: template.hp,
                                                 level: template.baseLevel,
-                                                strategy: MonsterStrategyType.PASSIVE
+                                                strategy: MonsterStrategyType.PASSIVE,
+                                                sprite: template.sprite
                                             }
                                         );
                                     }
