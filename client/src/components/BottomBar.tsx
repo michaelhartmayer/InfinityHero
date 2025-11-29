@@ -15,7 +15,7 @@ export function BottomBar({ onToggleInventory, skills = [] }: BottomBarProps) {
     const [skillData, setSkillData] = useState<Record<string, SkillData>>({});
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/skills')
+        fetch('/api/skills')
             .then(res => res.json())
             .then((data: SkillData[]) => {
                 const map: Record<string, SkillData> = {};

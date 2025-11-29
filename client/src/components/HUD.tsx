@@ -14,7 +14,7 @@ export function HUD({ player }: HUDProps) {
     const [classIcons, setClassIcons] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/classes')
+        fetch('/api/classes')
             .then(res => res.json())
             .then((data: ClassData[]) => {
                 const icons: Record<string, string> = {};

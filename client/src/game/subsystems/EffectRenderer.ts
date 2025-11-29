@@ -36,7 +36,7 @@ export class EffectRenderer {
         this.vfxLibrary = new VFXLibrary(this.renderer, this.scene, this.camera);
 
         // Load effect definitions
-        fetch('http://localhost:3000/api/effects')
+        fetch('/api/effects')
             .then(res => res.json())
             .then((data: EffectConfig[]) => {
                 data.forEach(config => {

@@ -318,7 +318,7 @@ const MonsterSpritePreview = ({ spriteId }: { spriteId: string }) => {
 
     useEffect(() => {
         if (!spriteId) return;
-        fetch('http://localhost:3000/api/sprites')
+        fetch('/api/sprites')
             .then(res => res.json())
             .then((sprites: Sprite[]) => {
                 const found = sprites.find(s => s.id === spriteId);
@@ -398,7 +398,7 @@ const MonsterSpriteSelector = ({ value, onChange }: { value?: string, onChange: 
     const [sprites, setSprites] = useState<Sprite[]>([]);
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/sprites')
+        fetch('/api/sprites')
             .then(res => res.json())
             .then(data => setSprites(data));
     }, []);
@@ -430,7 +430,7 @@ const MonsterList = () => {
     }, []);
 
     const fetchMonsters = async () => {
-        const res = await fetch('http://localhost:3000/api/monsters');
+        const res = await fetch('/api/monsters');
         const data = await res.json();
         setMonsters(data);
     };
@@ -467,14 +467,14 @@ const MonsterForm = () => {
     const isNew = !id;
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/effects')
+        fetch('/api/effects')
             .then(res => res.json())
             .then(data => setEffects(data));
 
         if (!isNew && id) {
             // Fetch specific monster
             // Fetch all monsters and find the one we need
-            fetch('http://localhost:3000/api/monsters')
+            fetch('/api/monsters')
                 .then(res => res.json())
                 .then((all: Monster[]) => {
                     const found = all.find(m => m.id === id);
@@ -493,7 +493,7 @@ const MonsterForm = () => {
         e.preventDefault();
         if (!editing) return;
 
-        await fetch('http://localhost:3000/api/monsters', {
+        await fetch('/api/monsters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editing)
@@ -504,7 +504,7 @@ const MonsterForm = () => {
 
     const handleDelete = async () => {
         if (!editing || !confirm('Are you sure you want to delete this monster?')) return;
-        await fetch(`http://localhost:3000/api/monsters/${editing.id}`, { method: 'DELETE' });
+        await fetch(`/api/monsters/${editing.id}`, { method: 'DELETE' });
         navigate('..');
     };
 
@@ -592,7 +592,7 @@ const SkillList = () => {
     }, []);
 
     const fetchSkills = async () => {
-        const res = await fetch('http://localhost:3000/api/skills');
+        const res = await fetch('/api/skills');
         const data = await res.json();
         setSkills(data);
     };
@@ -627,7 +627,7 @@ const SkillForm = () => {
 
     useEffect(() => {
         if (!isNew && id) {
-            fetch('http://localhost:3000/api/skills')
+            fetch('/api/skills')
                 .then(res => res.json())
                 .then((all: Skill[]) => {
                     const found = all.find(s => s.id === id);
@@ -644,7 +644,7 @@ const SkillForm = () => {
         e.preventDefault();
         if (!editing) return;
 
-        await fetch('http://localhost:3000/api/skills', {
+        await fetch('/api/skills', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editing)
@@ -655,7 +655,7 @@ const SkillForm = () => {
 
     const handleDelete = async () => {
         if (!editing || !confirm('Are you sure you want to delete this skill?')) return;
-        await fetch(`http://localhost:3000/api/skills/${editing.id}`, { method: 'DELETE' });
+        await fetch(`/api/skills/${editing.id}`, { method: 'DELETE' });
         navigate('..');
     };
 
@@ -809,13 +809,13 @@ const MapList = () => {
     }, []);
 
     const fetchMapList = async () => {
-        const res = await fetch('http://localhost:3000/api/maps');
+        const res = await fetch('/api/maps');
         const data = await res.json();
         setMapList(data);
     };
 
     const fetchActiveMap = async () => {
-        const res = await fetch('http://localhost:3000/api/active-map');
+        const res = await fetch('/api/active-map');
         const data = await res.json();
         setActiveMapId(data.id);
     };
@@ -852,7 +852,7 @@ const MapList = () => {
             placedSwatches: []
         };
 
-        await fetch('http://localhost:3000/api/map', {
+        await fetch('/api/map', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newMap)
@@ -870,7 +870,7 @@ const MapList = () => {
         }
         if (!confirm(`Are you sure you want to delete map "${id}"?`)) return;
 
-        await fetch(`http://localhost:3000/api/maps/${id}`, {
+        await fetch(`/api/maps/${id}`, {
             method: 'DELETE'
         });
 
@@ -881,7 +881,7 @@ const MapList = () => {
         e.stopPropagation();
         if (!confirm(`Set "${id}" as the active server map? This will reload the world for all players.`)) return;
 
-        await fetch('http://localhost:3000/api/active-map', {
+        await fetch('/api/active-map', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
@@ -972,7 +972,7 @@ const MapEditView = () => {
             for (const tileset of Array.from(uniqueTilesets)) {
                 if (!newImages[tileset]) {
                     try {
-                        const res = await fetch(`http://localhost:3000/api/tilesets/${tileset}`);
+                        const res = await fetch(`/api/tilesets/${tileset}`);
                         const data = await res.json();
                         newMetadata[tileset] = data;
 
@@ -1002,14 +1002,14 @@ const MapEditView = () => {
     }, [swatchSets]);
 
     const fetchMap = async (id: string) => {
-        const res = await fetch(`http://localhost:3000/api/maps/${id}`);
+        const res = await fetch(`/api/maps/${id}`);
         const data = await res.json();
         if (!data.placedSwatches) data.placedSwatches = [];
         setMapData(data);
     };
 
     const fetchSwatches = async () => {
-        const res = await fetch('http://localhost:3000/api/swatches');
+        const res = await fetch('/api/swatches');
         const data = await res.json();
         setSwatchSets(data);
         if (data.length > 0) setActiveSetId(data[0].id);
@@ -1017,7 +1017,7 @@ const MapEditView = () => {
 
     const handleSave = async () => {
         if (!mapData) return;
-        const res = await fetch('http://localhost:3000/api/map', {
+        const res = await fetch('/api/map', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(mapData)
@@ -1554,7 +1554,7 @@ const TilesetView = () => {
             for (const tileset of Array.from(uniqueTilesets)) {
                 if (!newImages[tileset]) {
                     try {
-                        const res = await fetch(`http://localhost:3000/api/tilesets/${tileset}`);
+                        const res = await fetch(`/api/tilesets/${tileset}`);
                         const data = await res.json();
 
                         const img = new Image();
@@ -1582,13 +1582,13 @@ const TilesetView = () => {
     }, [swatchSets]);
 
     const fetchTilesets = async () => {
-        const res = await fetch('http://localhost:3000/api/tilesets');
+        const res = await fetch('/api/tilesets');
         const data = await res.json();
         setTilesets(data);
     };
 
     const fetchSwatches = async () => {
-        const res = await fetch('http://localhost:3000/api/swatches');
+        const res = await fetch('/api/swatches');
         const data = await res.json();
         setSwatchSets(data);
         if (data.length > 0 && (!activeSetId || !data.find((s: any) => s.id === activeSetId))) {
@@ -1597,7 +1597,7 @@ const TilesetView = () => {
     };
 
     const fetchTilesetData = async (name: string) => {
-        const res = await fetch(`http://localhost:3000/api/tilesets/${name}`);
+        const res = await fetch(`/api/tilesets/${name}`);
         const data = await res.json();
         if (data.texture) setPreviewImage(data.texture);
         if (data.tileSize) setGridSize(data.tileSize);
@@ -1652,7 +1652,7 @@ const TilesetView = () => {
     };
 
     const saveSwatchSets = async (newSets: any[]) => {
-        await fetch('http://localhost:3000/api/swatches', {
+        await fetch('/api/swatches', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newSets)
@@ -2083,7 +2083,7 @@ const SpriteList = () => {
     }, []);
 
     const fetchSprites = async () => {
-        const res = await fetch('http://localhost:3000/api/sprites');
+        const res = await fetch('/api/sprites');
         const data = await res.json();
         setSprites(data);
     };
@@ -2623,10 +2623,10 @@ const SpriteForm = () => {
     }, [editing, activeAnim]);
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/sprite-textures').then(r => r.json()).then(setTextures);
+        fetch('/api/sprite-textures').then(r => r.json()).then(setTextures);
 
         if (!isNew && id) {
-            fetch('http://localhost:3000/api/sprites')
+            fetch('/api/sprites')
                 .then(res => res.json())
                 .then((all: Sprite[]) => {
                     const found = all.find(s => s.id === id);
@@ -2808,7 +2808,7 @@ const SpriteForm = () => {
         e.preventDefault();
         if (!editing) return;
 
-        await fetch('http://localhost:3000/api/sprites', {
+        await fetch('/api/sprites', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editing)
@@ -2819,7 +2819,7 @@ const SpriteForm = () => {
 
     const handleDelete = async () => {
         if (!editing || !confirm('Are you sure you want to delete this sprite?')) return;
-        await fetch(`http://localhost:3000/api/sprites/${editing.id}`, { method: 'DELETE' });
+        await fetch(`/api/sprites/${editing.id}`, { method: 'DELETE' });
         navigate('..');
     };
 
@@ -3168,7 +3168,7 @@ const ClassList = () => {
     }, []);
 
     const fetchClasses = async () => {
-        const res = await fetch('http://localhost:3000/api/classes');
+        const res = await fetch('/api/classes');
         const data = await res.json();
         setClasses(data);
     };
@@ -3204,10 +3204,10 @@ const ClassForm = () => {
 
     useEffect(() => {
         // Fetch dependencies
-        fetch('http://localhost:3000/api/skills').then(r => r.json()).then(setSkills);
+        fetch('/api/skills').then(r => r.json()).then(setSkills);
 
         if (!isNew && id) {
-            fetch('http://localhost:3000/api/classes')
+            fetch('/api/classes')
                 .then(res => res.json())
                 .then((all: Class[]) => {
                     const found = all.find(c => c.id === id);
@@ -3224,7 +3224,7 @@ const ClassForm = () => {
         e.preventDefault();
         if (!editing) return;
 
-        await fetch('http://localhost:3000/api/classes', {
+        await fetch('/api/classes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editing)
@@ -3235,7 +3235,7 @@ const ClassForm = () => {
 
     const handleDelete = async () => {
         if (!editing || !confirm('Are you sure you want to delete this class?')) return;
-        await fetch(`http://localhost:3000/api/classes/${editing.id}`, { method: 'DELETE' });
+        await fetch(`/api/classes/${editing.id}`, { method: 'DELETE' });
         navigate('..');
     };
 
@@ -3584,7 +3584,7 @@ const EffectList = () => {
     }, []);
 
     const fetchEffects = async () => {
-        const res = await fetch('http://localhost:3000/api/effects');
+        const res = await fetch('/api/effects');
         const data = await res.json();
         setEffects(data);
     };
@@ -3620,7 +3620,7 @@ const EffectForm = () => {
 
     useEffect(() => {
         if (!isNew && id) {
-            fetch('http://localhost:3000/api/effects')
+            fetch('/api/effects')
                 .then(res => res.json())
                 .then((all: Effect[]) => {
                     const found = all.find(e => e.id === id);
@@ -3701,7 +3701,7 @@ void main() {
         e.preventDefault();
         if (!editing) return;
 
-        await fetch('http://localhost:3000/api/effects', {
+        await fetch('/api/effects', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editing)
@@ -3712,7 +3712,7 @@ void main() {
 
     const handleDelete = async () => {
         if (!editing || !confirm('Are you sure you want to delete this effect?')) return;
-        await fetch(`http://localhost:3000/api/effects/${editing.id}`, { method: 'DELETE' });
+        await fetch(`/api/effects/${editing.id}`, { method: 'DELETE' });
         navigate('..');
     };
 
