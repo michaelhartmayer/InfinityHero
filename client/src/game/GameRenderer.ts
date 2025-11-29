@@ -202,11 +202,18 @@ export class GameRenderer {
         this.uiRenderer.resize(width, height);
     }
 
+    private lastDrawCalls: number = 0;
+
     private animate = (time: number) => {
         const dt = Math.min((time - this.lastFrameTime) / 1000, 0.1); // Clamp dt to 100ms
         this.lastFrameTime = time;
 
-        this.playerRenderer.updateAnimations(dt, this.onDebugUpdate);
+        // Wrap the debug update callback to inject draw calls
+        const wrappedDebugUpdate = this.onDebugUpdate ? (info: string) => {
+            this.onDebugUpdate!(info + `\nDraw Calls: ${this.lastDrawCalls}`);
+        } : undefined;
+
+        this.playerRenderer.updateAnimations(dt, wrappedDebugUpdate);
         this.playerRenderer.interpolatePositions(dt);
 
         this.monsterRenderer.updateAnimations(dt);
@@ -224,6 +231,7 @@ export class GameRenderer {
         }
 
         this.renderer.render(this.scene, this.camera);
+        this.lastDrawCalls = this.renderer.info.render.calls;
         this.uiRenderer.render(this.scene, this.camera);
     }
 }

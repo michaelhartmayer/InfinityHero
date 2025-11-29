@@ -19,7 +19,28 @@ export class InteractionManager {
 
         this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
 
-        const intersects = this.raycaster.intersectObjects(this.monsterRenderer.group.children, true);
+        // Optimization: Filter objects by distance to cursor in world space
+        // First get world position of cursor
+        // Orthographic camera: unproject is simple
+        const vector = new THREE.Vector3(ndcX, ndcY, 0).unproject(this.camera);
+        const cursorX = vector.x;
+        const cursorY = vector.y;
+
+        const candidates: THREE.Object3D[] = [];
+        const radius = 1.5; // Check monsters within 1.5 units
+
+        for (const mesh of this.monsterRenderer.group.children) {
+            // Simple distance check (ignoring z)
+            const dx = mesh.position.x - cursorX;
+            const dy = mesh.position.y - cursorY;
+            if (dx * dx + dy * dy < radius * radius) {
+                candidates.push(mesh);
+            }
+        }
+
+        if (candidates.length === 0) return null;
+
+        const intersects = this.raycaster.intersectObjects(candidates, true);
 
         if (intersects.length > 0) {
             // Find the root mesh of the monster (parent of parts)

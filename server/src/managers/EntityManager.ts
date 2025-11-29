@@ -10,9 +10,37 @@ export class EntityManager {
     private classDatabase: ClassDatabase;
     private monsterDatabase: MonsterDatabase;
 
+    private spatialMap: Map<string, string> = new Map(); // "x,y" -> entityId
+
     constructor(classDatabase: ClassDatabase, monsterDatabase: MonsterDatabase) {
         this.classDatabase = classDatabase;
         this.monsterDatabase = monsterDatabase;
+    }
+
+    private getSpatialKey(x: number, y: number): string {
+        return `${Math.round(x)},${Math.round(y)}`;
+    }
+
+    private updateSpatialMap(id: string, oldPos: Position | null, newPos: Position) {
+        const newKey = this.getSpatialKey(newPos.x, newPos.y);
+
+        if (oldPos) {
+            const oldKey = this.getSpatialKey(oldPos.x, oldPos.y);
+
+            // Optimization: If key hasn't changed, do nothing
+            if (oldKey === newKey) {
+                // Ensure the map has this entity (in case of initialization or weird state)
+                // But generally we can just return
+                if (this.spatialMap.get(newKey) === id) {
+                    return;
+                }
+            }
+
+            if (this.spatialMap.get(oldKey) === id) {
+                this.spatialMap.delete(oldKey);
+            }
+        }
+        this.spatialMap.set(newKey, id);
     }
 
     public addPlayer(id: string, name: string, spawnPosition?: Position): Player {
@@ -26,14 +54,16 @@ export class EntityManager {
         const hp = randomClass ? randomClass.baseHp : 100;
         const energy = randomClass ? randomClass.baseEnergy : 50;
 
+        const position = spawnPosition || {
+            x: Math.floor(Math.random() * 40) + 5,
+            y: Math.floor(Math.random() * 40) + 5
+        };
+
         const player: Player = {
             id,
             type: 'player',
             name,
-            position: spawnPosition || {
-                x: Math.floor(Math.random() * 40) + 5,
-                y: Math.floor(Math.random() * 40) + 5
-            },
+            position,
             hp,
             maxHp: hp,
             energy,
@@ -47,6 +77,7 @@ export class EntityManager {
             skills: randomClass ? randomClass.startingSkills : ['melee']
         };
         this.players[id] = player;
+        this.updateSpatialMap(id, null, position);
         return player;
     }
 
@@ -68,7 +99,14 @@ export class EntityManager {
     }
 
     public removePlayer(id: string) {
-        delete this.players[id];
+        const player = this.players[id];
+        if (player) {
+            const key = this.getSpatialKey(player.position.x, player.position.y);
+            if (this.spatialMap.get(key) === id) {
+                this.spatialMap.delete(key);
+            }
+            delete this.players[id];
+        }
     }
 
     public getPlayer(id: string): Player | undefined {
@@ -81,7 +119,9 @@ export class EntityManager {
 
     public updatePlayerPosition(id: string, position: Position) {
         if (this.players[id]) {
+            const oldPos = this.players[id].position;
             this.players[id].position = position;
+            this.updateSpatialMap(id, oldPos, position);
         }
     }
 
@@ -115,12 +155,12 @@ export class EntityManager {
             moveTarget: null,
             movePath: [],
             sprite: template.sprite,
-            sprite: template.sprite,
             spawnEffect: template.spawnEffect,
             lastAttackTime: 0
         };
 
         this.monsters[id] = monster;
+        this.updateSpatialMap(id, null, position);
         console.log(`🐉 Spawned ${template.name} at (${position.x}, ${position.y})`);
         return monster;
     }
@@ -133,11 +173,12 @@ export class EntityManager {
         template?: { hp?: number, level?: number, strategy?: MonsterStrategyType, sprite?: string, spawnEffect?: string }
     ): Monster {
         const hp = template?.hp || 50;
+        const position = { x, y };
         const monster: Monster = {
             id,
             type: 'monster',
             name,
-            position: { x, y },
+            position,
             hp,
             maxHp: hp,
             level: template?.level || 1,
@@ -146,17 +187,24 @@ export class EntityManager {
             lastActionTime: Date.now(),
             moveTarget: null,
             movePath: [],
-            sprite: template?.sprite,
-            sprite: template?.sprite,
-            spawnEffect: template?.spawnEffect,
+            sprite: template.sprite,
+            spawnEffect: template.spawnEffect,
             lastAttackTime: 0
         };
         this.monsters[id] = monster;
+        this.updateSpatialMap(id, null, position);
         return monster;
     }
 
     public removeMonster(id: string) {
-        delete this.monsters[id];
+        const monster = this.monsters[id];
+        if (monster) {
+            const key = this.getSpatialKey(monster.position.x, monster.position.y);
+            if (this.spatialMap.get(key) === id) {
+                this.spatialMap.delete(key);
+            }
+            delete this.monsters[id];
+        }
     }
 
     public getMonster(id: string): Monster | undefined {
@@ -169,7 +217,9 @@ export class EntityManager {
 
     public updateMonsterPosition(id: string, position: Position) {
         if (this.monsters[id]) {
+            const oldPos = this.monsters[id].position;
             this.monsters[id].position = position;
+            this.updateSpatialMap(id, oldPos, position);
         }
     }
 
@@ -201,7 +251,9 @@ export class EntityManager {
         const player = this.players[id];
         if (player) {
             player.hp = player.maxHp;
+            const oldPos = player.position;
             player.position = { x: 5, y: 5 };
+            this.updateSpatialMap(id, oldPos, player.position);
         }
     }
 
@@ -239,21 +291,16 @@ export class EntityManager {
         return null;
     }
 
-    public getOccupiedPositions(excludeId?: string): Set<string> {
-        const occupied = new Set<string>();
-        for (const p of Object.values(this.players)) {
-            if (p.id !== excludeId) {
-                occupied.add(`${Math.round(p.position.x)},${Math.round(p.position.y)}`);
-            }
-        }
-        for (const m of Object.values(this.monsters)) {
-            if (m.id !== excludeId) {
-                occupied.add(`${Math.round(m.position.x)},${Math.round(m.position.y)}`);
-            }
-        }
-        return occupied;
+    public isPositionOccupied(x: number, y: number, excludeId?: string): boolean {
+        const key = this.getSpatialKey(x, y);
+        const occupierId = this.spatialMap.get(key);
+        return occupierId !== undefined && occupierId !== excludeId;
     }
+
     public clearMonsters() {
+        for (const id of Object.keys(this.monsters)) {
+            this.removeMonster(id);
+        }
         this.monsters = {};
     }
 

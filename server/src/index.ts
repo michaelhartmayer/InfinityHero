@@ -380,13 +380,12 @@ io.on('connection', (socket) => {
             const player = entityManager.getPlayer(socket.id);
             if (player) {
                 // Calculate path from current position to target
-                const obstacles = entityManager.getOccupiedPositions(socket.id);
                 const path = worldManager.findPath(
                     player.position.x,
                     player.position.y,
                     target.x,
                     target.y,
-                    obstacles
+                    (x, y) => entityManager.isPositionOccupied(x, y, player.id)
                 );
 
                 if (path.length > 0) {

@@ -25,7 +25,7 @@ export class MonsterRenderer {
     private localPlayerPos: { x: number, y: number } | undefined;
     private activeWalkingSounds: Map<string, { source: AudioBufferSourceNode, gainNode: GainNode }> = new Map();
 
-    private static materialCache: Map<string, THREE.Material> = new Map();
+
 
     constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, effectRenderer: EffectRenderer) {
         this.group = new THREE.Group();
@@ -93,24 +93,42 @@ export class MonsterRenderer {
                     if (texture) {
                         const geometry = new THREE.PlaneGeometry(1, 1.25);
 
-                        let material = MonsterRenderer.materialCache.get(monster.sprite);
-                        if (!material) {
-                            material = new THREE.MeshStandardMaterial({
-                                map: texture,
-                                transparent: true,
-                                alphaTest: 0.5,
-                                side: THREE.DoubleSide
-                            });
-                            MonsterRenderer.materialCache.set(monster.sprite, material);
+                        let material: THREE.MeshStandardMaterial;
+                        // We need a unique material per monster to have unique texture offsets
+                        // But we can share the texture data (image)
+
+                        const clonedTexture = texture.clone();
+                        clonedTexture.needsUpdate = true;
+                        clonedTexture.colorSpace = THREE.SRGBColorSpace;
+                        clonedTexture.magFilter = THREE.NearestFilter;
+                        clonedTexture.minFilter = THREE.NearestFilter;
+
+                        // Calculate repeat based on frame size
+                        const sprite = this.spriteLoader.getSprite(monster.sprite);
+                        const img = texture.image as HTMLImageElement;
+                        if (sprite && img && img.width && img.height) {
+                            const cols = Math.floor(img.width / sprite.frameWidth);
+                            const rows = Math.floor(img.height / sprite.frameHeight);
+                            clonedTexture.repeat.set(1 / cols, 1 / rows);
                         }
+
+                        material = new THREE.MeshStandardMaterial({
+                            map: clonedTexture,
+                            transparent: true,
+                            alphaTest: 0.5,
+                            side: THREE.DoubleSide
+                        });
+                        // Do not cache unique materials
+                        // MonsterRenderer.materialCache.set(monster.sprite, material);
 
                         mesh = new THREE.Mesh(geometry, material);
                         mesh.matrixAutoUpdate = false; // Optimization: Manual matrix update
 
-                        const uvs = this.spriteLoader.getFrameUVs(monster.sprite, 1);
-                        if (uvs) {
-                            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-                        }
+                        // UVs are handled by texture offset now
+                        // const uvs = this.spriteLoader.getFrameUVs(monster.sprite, 1);
+                        // if (uvs) {
+                        //     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                        // }
                     } else {
                         if (this.spriteLoader.hasTextures()) {
                             console.warn('⚠️ Texture not found for sprite: ' + monster.sprite + '. Using fallback.');
@@ -236,16 +254,28 @@ export class MonsterRenderer {
 
                     const geometry = new THREE.PlaneGeometry(1, 1.25);
 
-                    let material = MonsterRenderer.materialCache.get(state.spriteId);
-                    if (!material) {
-                        material = new THREE.MeshStandardMaterial({
-                            map: texture,
-                            transparent: true,
-                            alphaTest: 0.5,
-                            side: THREE.DoubleSide
-                        });
-                        MonsterRenderer.materialCache.set(state.spriteId, material);
+                    let material: THREE.MeshStandardMaterial;
+
+                    const clonedTexture = texture.clone();
+                    clonedTexture.needsUpdate = true;
+                    clonedTexture.colorSpace = THREE.SRGBColorSpace;
+                    clonedTexture.magFilter = THREE.NearestFilter;
+                    clonedTexture.minFilter = THREE.NearestFilter;
+
+                    const sprite = this.spriteLoader.getSprite(state.spriteId);
+                    const img = texture.image as HTMLImageElement;
+                    if (sprite && img && img.width && img.height) {
+                        const cols = Math.floor(img.width / sprite.frameWidth);
+                        const rows = Math.floor(img.height / sprite.frameHeight);
+                        clonedTexture.repeat.set(1 / cols, 1 / rows);
                     }
+
+                    material = new THREE.MeshStandardMaterial({
+                        map: clonedTexture,
+                        transparent: true,
+                        alphaTest: 0.5,
+                        side: THREE.DoubleSide
+                    });
 
                     mesh = new THREE.Mesh(geometry, material);
                     mesh.matrixAutoUpdate = false; // Optimization
@@ -294,10 +324,11 @@ export class MonsterRenderer {
                     mesh.position.set(state.lastPosition.x, state.lastPosition.y, 0.4);
                     mesh.updateMatrix(); // Manual update
 
-                    const uvs = this.spriteLoader.getFrameUVs(state.spriteId, 10);
-                    if (uvs) {
-                        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-                    }
+                    // UVs are handled by texture offset now
+                    // const uvs = this.spriteLoader.getFrameUVs(state.spriteId, 10);
+                    // if (uvs) {
+                    //     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                    // }
 
                     this.group.add(mesh);
                     this.monsterMeshes.set(id, mesh);
@@ -381,10 +412,26 @@ export class MonsterRenderer {
                         const frameIdx = Math.floor(state.animationTime * anim.frameRate) % totalFrames;
                         const frame = anim.frames[frameIdx];
 
-                        const uvs = this.spriteLoader.getFrameUVs(spriteId, frame);
-                        if (uvs) {
-                            mesh.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-                            (mesh.geometry.attributes.uv as THREE.BufferAttribute).needsUpdate = true;
+                        const material = mesh.material as THREE.MeshStandardMaterial;
+                        if (material && material.map) {
+                            const texture = material.map;
+                            const img = texture.image as HTMLImageElement;
+                            if (img && img.width && img.height) {
+                                const cols = Math.floor(img.width / sprite.frameWidth);
+                                const rows = Math.floor(img.height / sprite.frameHeight);
+
+                                const col = frame % cols;
+                                const row = Math.floor(frame / cols);
+
+                                // Update offset
+                                // UVs start at bottom-left (0,0)
+                                // Texture coords start at top-left (0,0)
+                                // offset.x = col / cols
+                                // offset.y = 1 - (row + 1) / rows
+
+                                texture.offset.x = col / cols;
+                                texture.offset.y = 1 - ((row + 1) / rows);
+                            }
                         }
                     }
                 }
