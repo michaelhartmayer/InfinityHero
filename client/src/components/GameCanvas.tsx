@@ -11,7 +11,7 @@ interface GameCanvasProps {
     localPlayerId: string | null;
     lastMessage: ChatMessage | null;
     lastAttackEvent: { attackerId: string, targetId: string, damage: number } | null;
-    lastEffectEvent: { effectId: string, position: { x: number, y: number }, durationMs: number } | null;
+    lastEffectEvent: { effectId: string, position?: { x: number, y: number }, entityId?: string, durationMs: number } | null;
     onMove: (x: number, y: number) => void;
     onAttack: (targetId: string) => void;
     onDebugUpdate?: (info: string) => void;
@@ -181,24 +181,47 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
     }, [lastAttackEvent, players]);
 
     // Track processed effects to prevent duplicates
-    const lastProcessedEffectRef = useRef<{ effectId: string, position: { x: number, y: number }, durationMs: number } | null>(null);
+    const lastProcessedEffectRef = useRef<{ effectId: string, position?: { x: number, y: number }, entityId?: string, durationMs: number } | null>(null);
 
     // Handle effect events
     useEffect(() => {
         if (lastEffectEvent && rendererRef.current && mapData && lastEffectEvent !== lastProcessedEffectRef.current) {
             lastProcessedEffectRef.current = lastEffectEvent;
 
-            // Convert world coordinates to map coordinates
-            const offsetX = mapData.width / 2;
-            const offsetY = mapData.height / 2;
-            const worldPos = {
-                x: lastEffectEvent.position.x - offsetX,
-                y: lastEffectEvent.position.y - offsetY
-            };
+            let worldPos: { x: number, y: number };
+            let entityId: string | undefined;
 
-            rendererRef.current.playEffect(lastEffectEvent.effectId, worldPos);
+            if (lastEffectEvent.entityId) {
+                // Entity-attached effect - resolve entity position
+                const entity = players[lastEffectEvent.entityId] || monsters[lastEffectEvent.entityId];
+                if (entity) {
+                    const offsetX = mapData.width / 2;
+                    const offsetY = mapData.height / 2;
+                    worldPos = {
+                        x: entity.position.x - offsetX,
+                        y: entity.position.y - offsetY
+                    };
+                    entityId = lastEffectEvent.entityId;
+                } else {
+                    console.warn(`Entity ${lastEffectEvent.entityId} not found for effect`);
+                    return;
+                }
+            } else if (lastEffectEvent.position) {
+                // Static positioned effect
+                const offsetX = mapData.width / 2;
+                const offsetY = mapData.height / 2;
+                worldPos = {
+                    x: lastEffectEvent.position.x - offsetX,
+                    y: lastEffectEvent.position.y - offsetY
+                };
+            } else {
+                console.warn('Effect event missing both position and entityId');
+                return;
+            }
+
+            rendererRef.current.playEffect(lastEffectEvent.effectId, worldPos, entityId);
         }
-    }, [lastEffectEvent, mapData]);
+    }, [lastEffectEvent, mapData, players, monsters]);
 
     // Auto-follow logic
     useEffect(() => {

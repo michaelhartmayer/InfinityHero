@@ -85,6 +85,7 @@ export const EVENTS = {
     PLAYER_CHANGE_CLASS: 'player_change_class',
     PLAYER_SET_ACTIVE_SKILL: 'player_set_active_skill',
     EFFECT: 'effect',
+    SKILL_COOLDOWN: 'skill_cooldown',
 };
 
 export const CONSTANTS = {

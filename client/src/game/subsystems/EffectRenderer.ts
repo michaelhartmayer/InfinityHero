@@ -133,7 +133,7 @@ export class EffectRenderer {
         }
     }
 
-    public playEffect(effectId: string, position: { x: number, y: number }) {
+    public playEffect(effectId: string, position: { x: number, y: number }, entityId?: string) {
         const config = this.effectConfigs.get(effectId);
         if (!config) {
             console.warn(`[EffectRenderer] Effect config not found: ${effectId}`);
@@ -145,8 +145,30 @@ export class EffectRenderer {
         // Rotation.x = π/2 transforms: X→X, Y→Z, Z→-Y
         effect.group.rotation.x = Math.PI / 2;
         effect.group.position.set(position.x, position.y, 1.0); // Above sprites
+
+        // Store entity reference if this effect follows an entity
+        if (entityId) {
+            (effect as any).entityId = entityId;
+        }
+
         this.scene.add(effect.group);
         this.activeEffects.push(effect);
+    }
+
+    public updateEntityPositions(players: Record<string, any>, monsters: Record<string, any>, mapData: any) {
+        // Update positions of effects attached to entities
+        for (const effect of this.activeEffects) {
+            const entityId = (effect as any).entityId;
+            if (entityId) {
+                const entity = players[entityId] || monsters[entityId];
+                if (entity) {
+                    const offsetX = mapData.width / 2;
+                    const offsetY = mapData.height / 2;
+                    effect.group.position.x = entity.position.x - offsetX;
+                    effect.group.position.y = entity.position.y - offsetY;
+                }
+            }
+        }
     }
 
     public update(dt: number) {

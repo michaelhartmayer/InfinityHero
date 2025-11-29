@@ -20,7 +20,8 @@
             "baseHp": 80,
             "baseEnergy": 150,
             "startingSkills": [
-                "melee"
+                "melee",
+                "dev_self_heal"
             ]
         },
         {
@@ -31,7 +32,8 @@
             "baseHp": 100,
             "baseEnergy": 100,
             "startingSkills": [
-                "melee"
+                "melee",
+                "dev_self_heal"
             ]
         },
         {
@@ -42,7 +44,8 @@
             "baseHp": 110,
             "baseEnergy": 120,
             "startingSkills": [
-                "melee"
+                "melee",
+                "dev_self_heal"
             ]
         },
         {
@@ -53,7 +56,8 @@
             "baseHp": 120,
             "baseEnergy": 80,
             "startingSkills": [
-                "melee"
+                "melee",
+                "dev_self_heal"
             ]
         },
         {
@@ -64,7 +68,8 @@
             "baseHp": 160,
             "baseEnergy": 70,
             "startingSkills": [
-                "melee"
+                "melee",
+                "dev_self_heal"
             ]
         }
     ]

@@ -22,8 +22,12 @@ export function GamePage() {
     const [monsters, setMonsters] = useState<Record<string, Monster>>({});
     const [broadcastMessage, setBroadcastMessage] = useState<BroadcastMessage | null>(null);
     const [lastAttackEvent, setLastAttackEvent] = useState<{ attackerId: string, targetId: string, damage: number } | null>(null);
-    const [lastEffectEvent, setLastEffectEvent] = useState<{ effectId: string, position: { x: number, y: number }, durationMs: number } | null>(null);
+    const [lastEffectEvent, setLastEffectEvent] = useState<{ effectId: string, position?: { x: number, y: number }, entityId?: string, durationMs: number } | null>(null);
     const [isMuted, setIsMuted] = useState(false);
+    // Map: skillId -> expirationTimestamp
+    const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
+    // Map: skillId -> duration in ms (for progress calculation)
+    const [cooldownDurations, setCooldownDurations] = useState<Record<string, number>>({});
 
     useEffect(() => {
         // Connect to Socket.IO via Vite proxy (no need to specify port)
@@ -87,10 +91,22 @@ export function GamePage() {
             setBroadcastMessage(message);
         });
 
-        newSocket.on(EVENTS.EFFECT, (data: { effectId: string, position: { x: number, y: number }, durationMs: number }) => {
+        newSocket.on(EVENTS.EFFECT, (data: { effectId: string, position?: { x: number, y: number }, entityId?: string, durationMs: number }) => {
             console.log('Effect event received:', data);
             // The effect will be handled by GameCanvas via lastEffectEvent
             setLastEffectEvent(data);
+        });
+
+        newSocket.on(EVENTS.SKILL_COOLDOWN, (data: { skillId: string, expirationTime: number, duration: number }) => {
+            console.log('Skill cooldown received:', data);
+            setCooldowns(prev => ({
+                ...prev,
+                [data.skillId]: data.expirationTime
+            }));
+            setCooldownDurations(prev => ({
+                ...prev,
+                [data.skillId]: data.duration
+            }));
         });
 
         newSocket.on(EVENTS.COMMAND_HELP, (data: { commands: string[] }) => {
@@ -311,6 +327,8 @@ export function GamePage() {
                                 onToggleDebug={() => setIsDebugVisible(!isDebugVisible)}
                                 onToggleClassSelector={() => setIsClassSelectorOpen(!isClassSelectorOpen)}
                                 onSkillSelect={handleSkillSelect}
+                                cooldowns={cooldowns}
+                                cooldownDurations={cooldownDurations}
                             />
                         </div>
                     </>

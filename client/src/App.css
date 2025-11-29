@@ -311,6 +311,46 @@
   color: var(--text-dim);
 }
 
+.skill-slot.on-cooldown {
+  cursor: not-allowed;
+}
+
+.skill-slot.on-cooldown:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--glass-border);
+}
+
+.skill-slot.on-cooldown .skill-icon {
+  filter: grayscale(100%) brightness(0.4);
+}
+
+.cooldown-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 8px;
+  pointer-events: none;
+  transition: height 0.1s linear;
+  z-index: 5;
+}
+
+.cooldown-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 4px black, 1px 1px 2px black;
+  pointer-events: none;
+  z-index: 10;
+}
+
+
 .menu-bar {
   display: flex;
   gap: 10px;

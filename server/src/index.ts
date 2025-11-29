@@ -647,12 +647,24 @@ io.on('connection', (socket) => {
                 // Check if this is a self-cast skill - if so, execute immediately
                 const skillTemplate = skillDatabase.getTemplate(skillId);
                 if (skillTemplate && skillTemplate.target === 'self' && skillTemplate.script) {
-                    // Execute the skill script immediately
-                    const scriptEngine = new ScriptEngine(entityManager, io);
+                    // Check cooldown first
+                    if (scriptEngine.isOnCooldown(socket.id, skillId)) {
+                        socket.emit(EVENTS.CHAT_MESSAGE, {
+                            id: Math.random().toString(36).substr(2, 9),
+                            playerId: 'system',
+                            playerName: 'System',
+                            message: `Skill ${skillTemplate.name} is on cooldown!`,
+                            timestamp: Date.now()
+                        });
+                        return;
+                    }
+
+                    // Execute the skill script
                     scriptEngine.execute(skillTemplate.script, {
                         self: player,
                         target: player,
-                        trigger: 'ACTIVATE'
+                        trigger: 'ACTIVATE',
+                        skillId: skillId  // Pass skill ID for cooldown tracking
                     });
                 }
 

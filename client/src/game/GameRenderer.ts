@@ -30,6 +30,11 @@ export class GameRenderer {
     private localPlayerPos: { x: number, y: number } | undefined;
     private localPlayerId: string | null;
 
+    // Store game state for entity-attached effects
+    private mapData: WorldMap | null = null;
+    private players: Record<string, Player> = {};
+    private monsters: Record<string, Monster> = {};
+
     public onDebugUpdate: ((info: string) => void) | undefined;
 
     constructor(canvas: HTMLCanvasElement, localPlayerId: string | null) {
@@ -150,8 +155,8 @@ export class GameRenderer {
         this.uiRenderer.showChatBubble(playerId, message);
     }
 
-    public playEffect(effectId: string, position: { x: number, y: number }) {
-        this.effectRenderer.playEffect(effectId, position);
+    public playEffect(effectId: string, position: { x: number, y: number }, entityId?: string) {
+        this.effectRenderer.playEffect(effectId, position, entityId);
     }
 
     public showDamage(targetId: string, damage: number, attackerId?: string) {
@@ -192,10 +197,12 @@ export class GameRenderer {
     }
 
     public renderMap(map: WorldMap) {
+        this.mapData = map;
         this.mapRenderer.renderMap(map);
     }
 
     public updatePlayers(players: Record<string, Player>, currentMap: WorldMap | null) {
+        this.players = players;
         this.playerRenderer.updatePlayers(players, currentMap);
 
         // Update local player position for audio calculations
@@ -216,6 +223,7 @@ export class GameRenderer {
     }
 
     public updateMonsters(monsters: Record<string, Monster>, mapData: WorldMap) {
+        this.monsters = monsters;
         this.monsterRenderer.updateMonsters(monsters, mapData, this.localPlayerPos);
     }
 
@@ -255,6 +263,11 @@ export class GameRenderer {
 
         this.monsterRenderer.updateAnimations(dt);
         this.monsterRenderer.interpolatePositions(dt);
+
+        // Update entity-attached effects (must be before effectRenderer.update)
+        if (this.mapData) {
+            this.effectRenderer.updateEntityPositions(this.players, this.monsters, this.mapData);
+        }
 
         this.effectRenderer.update(dt);
         this.uiRenderer.update();

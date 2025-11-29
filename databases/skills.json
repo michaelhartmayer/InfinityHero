@@ -3,11 +3,11 @@
         {
             "id": "melee",
             "name": "Melee",
-            "description": "A basic melee attack.",
+            "description": "Basic melee attack",
             "range": 0,
-            "icon": "👊",
-            "target": "target",
-            "script": "ACTIVATE damage_target 10,$_target;"
+            "icon": "⚔️",
+            "target": "enemy",
+            "script": "# Cooldown\nATTACK cooldown 1000;\n\n# Attack for 5 base damage\nATTACK damage_target 5,$_target;"
         },
         {
             "id": "dev_self_heal",
@@ -16,7 +16,7 @@
             "range": 1,
             "icon": "⛑️",
             "target": "self",
-            "script": "# Heals the target\nACTIVATE heal_target 10,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,@$_self,1000;\n"
+            "script": "# Set 3-second cooldown\nACTIVATE cooldown 3000;\n\n# Heals the target\nACTIVATE heal_target 10,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,$_self,1000;\n"
         }
     ]
 }

@@ -15,10 +15,13 @@ interface BottomBarProps {
     onToggleDebug?: () => void;
     onToggleClassSelector?: () => void;
     onSkillSelect?: (skillId: string) => void;
+    cooldowns?: Record<string, number>; // Map of skillId -> expirationTimestamp
+    cooldownDurations?: Record<string, number>; // Map of skillId -> duration in ms
 }
 
-export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted = false, onToggleMute, onToggleDebug, onToggleClassSelector, onSkillSelect }: BottomBarProps) {
+export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted = false, onToggleMute, onToggleDebug, onToggleClassSelector, onSkillSelect, cooldowns = {}, cooldownDurations = {} }: BottomBarProps) {
     const [skillData, setSkillData] = useState<Record<string, SkillData>>({});
+    const [, setTick] = useState(0); // Force re-render for countdown
 
     useEffect(() => {
         fetch('/api/skills')
@@ -31,6 +34,14 @@ export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted
             .catch(err => console.error("Failed to load skills:", err));
     }, []);
 
+    // Update countdown timer every 100ms
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTick(t => t + 1);
+        }, 100);
+        return () => clearInterval(interval);
+    }, []);
+
     // Ensure we always have 5 slots
     const slots = [0, 1, 2, 3, 4];
 
@@ -41,19 +52,39 @@ export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted
                     const skillId = skills[index];
                     const skill = skillId ? skillData[skillId] : null;
                     const isActive = skillId === activeSkill;
+                    const cooldownEnd = skillId ? cooldowns[skillId] : undefined;
+                    const cooldownDuration = skillId ? cooldownDurations[skillId] : undefined;
+                    const now = Date.now();
+                    const isOnCooldown = cooldownEnd && now < cooldownEnd;
+                    const remainingMs = isOnCooldown ? cooldownEnd! - now : 0;
+                    // Calculate progress based on actual duration
+                    const totalDuration = cooldownDuration || 3000; // Fallback to 3s if not set
+                    const elapsedMs = totalDuration - remainingMs;
+                    const cooldownProgress = Math.min(elapsedMs / totalDuration, 1);
 
                     return (
                         <div
                             key={index}
-                            className={`skill-slot ${isActive ? 'active' : ''}`}
+                            className={`skill-slot ${isActive ? 'active' : ''} ${isOnCooldown ? 'on-cooldown' : ''}`}
                             title={skill ? skill.name : 'Empty Slot'}
                             onClick={() => {
-                                if (skillId && onSkillSelect) {
+                                if (skillId && onSkillSelect && !isOnCooldown) {
                                     onSkillSelect(skillId);
                                 }
                             }}
                         >
                             {skill ? <span className="skill-icon">{skill.icon}</span> : <span className="skill-key">{index + 1}</span>}
+                            {isOnCooldown && (
+                                <>
+                                    <div
+                                        className="cooldown-fill"
+                                        style={{
+                                            height: `${(1 - cooldownProgress) * 100}%`
+                                        }}
+                                    />
+                                    <div className="cooldown-text">{(remainingMs / 1000).toFixed(1)}s</div>
+                                </>
+                            )}
                         </div>
                     );
                 })}

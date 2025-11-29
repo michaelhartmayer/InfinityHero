@@ -33,7 +33,7 @@ export function ScriptEditor({ value, onChange, height = '400px' }: ScriptEditor
             functions: [
                 'damage_target', 'heal_target', 'effect', 'add_stat',
                 'chance', 'set_element', 'spawn_projectile', 'apply_buff',
-                'remove_buff', 'teleport', 'knockback'
+                'remove_buff', 'teleport', 'knockback', 'cooldown'
             ],
 
             // Variables
@@ -145,20 +145,17 @@ export function ScriptEditor({ value, onChange, height = '400px' }: ScriptEditor
 
                 // Function suggestions with snippets
                 const functions = [
-                    { name: 'damage_target', snippet: 'damage_target ${1:amount},${2:$_target};', doc: 'Deals damage to the target' },
-                    { name: 'heal_target', snippet: 'heal_target ${1:amount},${2:$_target};', doc: 'Heals the target' },
-                    { name: 'effect', snippet: 'effect ${1:effectId},${2:@$_target},${3:duration};', doc: 'Spawns a visual effect' },
-                    { name: 'add_stat', snippet: 'add_stat ${1:statName},${2:value},${3:$_self};', doc: 'Modifies a stat' },
-                    { name: 'chance', snippet: 'chance ${1:percent},${2:function},${3:args};', doc: 'Random chance to execute function' },
-                    { name: 'set_element', snippet: 'set_element ${1:element},${2:$_target};', doc: 'Sets attack element' }
+                    { label: 'damage_target', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'damage_target ${1:amount},${2:target};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Deals damage to target' },
+                    { label: 'heal_target', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'heal_target ${1:amount},${2:target};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Heals the target' },
+                    { label: 'effect', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'effect ${1:effectId},${2:target},${3:durationMs};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Displays a visual effect' },
+                    { label: 'cooldown', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'cooldown ${1:durationMs};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Sets cooldown on the skill (ms)' },
+                    { label: 'add_stat', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'add_stat ${1:statName},${2:value},${3:target};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Modifies a stat (EQUIP/UNEQUIP)' },
+                    { label: 'chance', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'chance ${1:percent},${2:function},${3:args};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Random chance execution' },
+                    { label: 'set_element', kind: monacoInstance.languages.CompletionItemKind.Function, insertText: 'set_element ${1:element},${2:target};', insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: 'Tags attack with element' },
                 ];
                 functions.forEach(fn => {
                     suggestions.push({
-                        label: fn.name,
-                        kind: monacoInstance.languages.CompletionItemKind.Function,
-                        insertText: fn.snippet,
-                        insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        documentation: fn.doc,
+                        ...fn,
                         range
                     });
                 });

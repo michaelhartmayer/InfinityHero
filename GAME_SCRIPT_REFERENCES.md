@@ -51,9 +51,49 @@ heal_target
     ACTIVATE heal_target amount,target;
     Heals the target.
 
-effect
-    ACTIVATE effect effectId,position,durationMs;
-    Spawns a timed effect at coordinates.
+### `effect`
+Displays a visual effect from the effects database.
+
+**Syntax**:
+```
+effect <effectId>,<target>,<durationMs>
+```
+
+**Target Types**:
+- **Entity reference** (`$_target`, `$_self`): Effect follows the entity as it moves
+- **Position reference** (`@$_target`, `@$_self`): Effect stays at a static position
+
+**Parameters**:
+- `effectId`: ID of the effect from effects.json
+- `target`: Entity (`$_target`, `$_self`) or position (`@$_target`, `@$_self`)
+- `durationMs`: How long the effect lasts in milliseconds
+
+**Example**:
+```
+# Effect follows the target entity (moves with them)
+effect heal_aura,$_self,2000
+
+# Effect appears at target's position (stays in one spot)
+effect explosion,@$_target,1000
+```
+
+### `cooldown`
+Sets a cooldown on the current skill, preventing it from being used again for the specified duration.
+
+**Syntax**:
+```
+cooldown <durationMs>
+```
+
+**Parameters**:
+- `durationMs`: Cooldown duration in milliseconds
+
+**Example**:
+```
+# Skill with 3-second cooldown
+ACTIVATE cooldown,3000
+ACTIVATE heal_target 10,$_self
+```
 
 add_stat
     EQUIP add_stat statName,value,target;
