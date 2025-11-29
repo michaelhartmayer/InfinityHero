@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { Routes, Route, NavLink, useNavigate, useParams, Navigate } from 'react-router-dom';
 import IconSelector from '../components/IconSelector';
+import { ScriptEditor } from '../components/ScriptEditor';
 
 // --- Types ---
 
@@ -26,6 +27,7 @@ interface Skill {
     range: number;
     icon: string;
     target: 'target' | 'self' | 'passive';
+    script?: string;
 }
 
 interface Sprite {
@@ -635,7 +637,7 @@ const SkillForm = () => {
                 });
         } else {
             setEditing({
-                id: '', name: '', description: '', range: 1, icon: 'sword', target: 'target'
+                id: '', name: '', description: '', range: 1, icon: 'sword', target: 'target', script: ''
             });
         }
     }, [id, isNew]);
@@ -697,6 +699,14 @@ const SkillForm = () => {
                             <option value="passive">Passive</option>
                         </select>
                     </div>
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Script</label>
+                    <ScriptEditor
+                        value={editing.script || ''}
+                        onChange={(script) => setEditing({ ...editing, script })}
+                        height="300px"
+                    />
                 </div>
                 <div style={{ marginTop: '30px' }}>
                     <button type="submit" className="btn btn-primary">Save Skill</button>

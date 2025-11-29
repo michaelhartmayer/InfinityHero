@@ -118,7 +118,7 @@
                 "geometryType": "box",
                 "count": 30,
                 "blending": "additive",
-                "vertexShader": "attribute float angle;\nuniform float uTime;\nvarying float vAlpha;\nvoid main() {\n    float speed = 1.0;\n    float yOffset = mod(uTime * speed + angle * 10.0, 2.0);\n    vec3 pos = position;\n    pos.y = yOffset - 1.0;\n    pos.x *= 0.5; pos.z *= 0.5;\n    vAlpha = 1.0 - abs(pos.y);\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 20.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nvarying float vAlpha;\n\nvoid main() {\n    float speed = -1.0;\n\n    // Shift animation to the Z axis\n    float zOffset = mod(uTime * speed + angle * 10.0, 2.0);\n\n    vec3 pos = position;\n    pos.z = zOffset - 1.0;\n\n    // Keep your x/y scaling\n    pos.x *= 0.5;\n    pos.y *= 0.5;\n\n    // Alpha based on Z distance now\n    vAlpha = 1.0 - abs(pos.z);\n\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 20.0;\n    gl_Position = projectionMatrix * mvPosition;\n}\n",
                 "fragmentShader": "varying float vAlpha;\nvoid main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    // Cross shape\n    float cross = 0.0;\n    if (abs(uv.x) < 0.15 && abs(uv.y) < 0.45) cross = 1.0;\n    if (abs(uv.y) < 0.15 && abs(uv.x) < 0.45) cross = 1.0;\n    if (cross < 0.5) discard;\n    gl_FragColor = vec4(0.2, 1.0, 0.4, vAlpha);\n}"
             }
         ],

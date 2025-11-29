@@ -16,7 +16,7 @@
             "range": 1,
             "icon": "⛑️",
             "target": "self",
-            "script": "ACTIVATE heal_target 20,$_self;\nACTIVATE effect heal_aura,@$_self,1000;"
+            "script": "# Heals the target\nACTIVATE heal_target 10,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,@$_self,1000;\n"
         }
     ]
 }
