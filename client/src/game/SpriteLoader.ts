@@ -32,18 +32,31 @@ export class SpriteLoader {
             // Load JSON data
             const response = await fetch(jsonPath);
             const data: SpriteData = await response.json();
-            this.sprites.set(id, data);
+            this.loadSpriteFromData(data, texturePath);
+        } catch (error) {
+            console.error(`Failed to load sprite ${id}:`, error);
+        }
+    }
+
+    async loadSpriteFromData(data: SpriteData, texturePath?: string): Promise<void> {
+        try {
+            this.sprites.set(data.id, data);
+
+            // Use provided texture path or fallback to default if not present in data (though data.texture is string)
+            // Actually, data.texture usually contains the filename. We need the full path.
+            // If texturePath is provided, use it. Otherwise construct it.
+            const path = texturePath || `/assets/sprites/${data.texture}`;
 
             // Load texture
-            const texture = await this.loadTexture(texturePath);
+            const texture = await this.loadTexture(path);
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
             texture.colorSpace = THREE.SRGBColorSpace;
-            this.textures.set(id, texture);
+            this.textures.set(data.id, texture);
 
-            console.log(`Loaded sprite: ${id}`);
+            console.log(`Loaded sprite: ${data.id}`);
         } catch (error) {
-            console.error(`Failed to load sprite ${id}:`, error);
+            console.error(`Failed to load sprite data ${data.id}:`, error);
         }
     }
 
@@ -65,7 +78,15 @@ export class SpriteLoader {
     }
 
     getTexture(id: string): THREE.Texture | undefined {
-        return this.textures.get(id);
+        const texture = this.textures.get(id);
+        if (!texture && this.textures.size > 0) {
+            console.warn(`Texture not found for id: "${id}". Available keys:`, Array.from(this.textures.keys()));
+        }
+        return texture;
+    }
+
+    hasTextures(): boolean {
+        return this.textures.size > 0;
     }
 
     // Calculate UVs for a specific frame index

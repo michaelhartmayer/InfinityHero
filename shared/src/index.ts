@@ -51,6 +51,7 @@ export interface Monster extends Entity {
     lastActionTime: number;
     moveTarget: Position | null;
     movePath: Position[];
+    sprite?: string;
 }
 
 export interface GameState {

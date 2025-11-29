@@ -8,7 +8,8 @@
             "energy": 30,
             "passiveStrategy": "wander",
             "attackStrategy": "melee_basic",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "sprite": "slime_green"
         },
         {
             "id": "slime_blue",
@@ -18,7 +19,8 @@
             "energy": 40,
             "passiveStrategy": "wander",
             "attackStrategy": "melee_basic",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "sprite": "slime_green"
         },
         {
             "id": "goblin_scout",

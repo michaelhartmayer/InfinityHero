@@ -1,0 +1,65 @@
+{
+    "id": "slime_green",
+    "name": "Green Slime Sprite",
+    "type": "character",
+    "texture": "dev-rpg-characters-1.png",
+    "frameWidth": 52,
+    "frameHeight": 72,
+    "animations": {
+        "idle_down": {
+            "frames": [
+                10
+            ],
+            "frameRate": 8,
+            "loop": true
+        },
+        "walk_left": {
+            "frames": [
+                21,
+                22,
+                23,
+                22
+            ],
+            "frameRate": 10,
+            "loop": false
+        },
+        "walk_right": {
+            "frames": [
+                33,
+                34,
+                35,
+                34
+            ],
+            "frameRate": 10,
+            "loop": false
+        },
+        "walk_up": {
+            "frames": [
+                45,
+                46,
+                47,
+                46
+            ],
+            "frameRate": 10,
+            "loop": false
+        },
+        "walk_down": {
+            "frames": [
+                9,
+                10,
+                11,
+                10
+            ],
+            "frameRate": 10,
+            "loop": false
+        }
+    },
+    "pivot": {
+        "x": 0.5,
+        "y": 1
+    },
+    "offsetX": 0,
+    "offsetY": 0,
+    "spacingX": 0,
+    "spacingY": 0
+}

@@ -14,6 +14,7 @@ export interface MonsterTemplate {
     passiveStrategy: string;
     attackStrategy: string;
     fleeStrategy: string;
+    sprite?: string;
 }
 
 export class MonsterDatabase {

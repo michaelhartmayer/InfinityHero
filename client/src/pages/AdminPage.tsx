@@ -15,6 +15,7 @@ interface Monster {
     passiveStrategy: string;
     attackStrategy: string;
     fleeStrategy: string;
+    sprite?: string;
 }
 
 interface Skill {
@@ -308,6 +309,116 @@ const styles = `
 
 // --- Components ---
 
+const MonsterSpritePreview = ({ spriteId }: { spriteId: string }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [spriteData, setSpriteData] = useState<Sprite | null>(null);
+    const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+    useEffect(() => {
+        if (!spriteId) return;
+        fetch('http://localhost:3000/api/sprites')
+            .then(res => res.json())
+            .then((sprites: Sprite[]) => {
+                const found = sprites.find(s => s.id === spriteId);
+                if (found) setSpriteData(found);
+            });
+    }, [spriteId]);
+
+    useEffect(() => {
+        if (!spriteData) return;
+        const img = new Image();
+        img.src = spriteData.texture; // This is a URL path, e.g. /assets/sprites/foo.png
+        // Wait, the existing SpritePreview uses /assets/sprites/ + texture.
+        // Let's check what spriteData.texture contains.
+        // In sprites.json it is likely just the filename.
+        // Let's assume filename and prepend /assets/sprites/ if needed.
+        // Actually, let's check the existing SpritePreview logic.
+        // It does: img.src = `/assets/sprites/${texture}`;
+        // So I should do the same.
+        if (spriteData.texture.startsWith('http') || spriteData.texture.startsWith('/')) {
+            img.src = spriteData.texture;
+        } else {
+            img.src = `/assets/sprites/${spriteData.texture}`;
+        }
+        img.onload = () => setImage(img);
+    }, [spriteData]);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !spriteData || !image) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Get WALK_DOWN animation or first available
+        const anim = spriteData.animations['walk_down'] || Object.values(spriteData.animations)[0];
+        if (!anim || anim.frames.length === 0) return;
+
+        // Use first frame of animation
+        const frameIndex = anim.frames[0];
+
+        // Calculate frame position
+        const cols = Math.floor(image.width / spriteData.frameWidth);
+        const col = frameIndex % cols;
+        const row = Math.floor(frameIndex / cols);
+
+        canvas.width = spriteData.frameWidth;
+        canvas.height = spriteData.frameHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(
+            image,
+            col * spriteData.frameWidth, row * spriteData.frameHeight,
+            spriteData.frameWidth, spriteData.frameHeight,
+            0, 0, spriteData.frameWidth, spriteData.frameHeight
+        );
+
+    }, [spriteData, image]);
+
+    if (!spriteId) return <div style={{ width: 32, height: 32, background: '#333', borderRadius: 4 }}></div>;
+
+    return (
+        <div style={{
+            width: 48,
+            height: 48,
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden'
+        }}>
+            <canvas ref={canvasRef} style={{ imageRendering: 'pixelated', maxWidth: '100%', maxHeight: '100%' }} />
+        </div>
+    );
+};
+
+const MonsterSpriteSelector = ({ value, onChange }: { value?: string, onChange: (val: string) => void }) => {
+    const [sprites, setSprites] = useState<Sprite[]>([]);
+
+    useEffect(() => {
+        fetch('http://localhost:3000/api/sprites')
+            .then(res => res.json())
+            .then(data => setSprites(data));
+    }, []);
+
+    return (
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <select
+                className="form-select"
+                value={value || ''}
+                onChange={e => onChange(e.target.value)}
+                style={{ flex: 1 }}
+            >
+                <option value="">-- No Sprite --</option>
+                {sprites.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+            </select>
+            {value && <MonsterSpritePreview spriteId={value} />}
+        </div>
+    );
+};
+
 const MonsterList = () => {
     const [monsters, setMonsters] = useState<Monster[]>([]);
     const navigate = useNavigate();
@@ -332,8 +443,13 @@ const MonsterList = () => {
                 {monsters.map(m => (
                     <div key={m.id} className="card" onClick={() => navigate(m.id)}>
                         <h3>{m.name}</h3>
-                        <p>Lvl {m.baseLevel} • {m.hp} HP</p>
-                        <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>ID: {m.id}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <p>Lvl {m.baseLevel} • {m.hp} HP</p>
+                                <p style={{ marginTop: '10px', fontSize: '0.8rem', opacity: 0.7 }}>ID: {m.id}</p>
+                            </div>
+                            {m.sprite && <MonsterSpritePreview spriteId={m.sprite} />}
+                        </div>
                     </div>
                 ))}
             </div>
@@ -415,6 +531,10 @@ const MonsterForm = () => {
                         <label className="form-label">Energy</label>
                         <input type="number" className="form-input" value={editing.energy} onChange={e => setEditing({ ...editing, energy: parseInt(e.target.value) })} required />
                     </div>
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Sprite</label>
+                    <MonsterSpriteSelector value={editing.sprite} onChange={(val) => setEditing({ ...editing, sprite: val })} />
                 </div>
                 <div className="form-group">
                     <label className="form-label">Strategies</label>

@@ -14,6 +14,7 @@ export interface MonsterTemplate {
     passiveStrategy: string;
     attackStrategy: string;
     fleeStrategy: string;
+    sprite?: string;
 }
 
 export interface MonsterDatabase {
@@ -36,11 +37,12 @@ export class MonsterLoader {
         this.database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
 
         // Build lookup map
-        for (const monster of this.database.monsters) {
-            this.monstersMap.set(monster.id, monster);
+        if (this.database) {
+            for (const monster of this.database.monsters) {
+                this.monstersMap.set(monster.id, monster);
+            }
+            console.log(`🐉 Loaded ${this.database.monsters.length} monster templates`);
         }
-
-        console.log(`🐉 Loaded ${this.database.monsters.length} monster templates`);
     }
 
     static getMonster(monsterId: string): MonsterTemplate | undefined {

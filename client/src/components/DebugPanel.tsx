@@ -48,7 +48,8 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ sessionId, animationInfo
             pointerEvents: 'none',
             zIndex: 1000,
             backdropFilter: 'blur(2px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            minWidth: '700px'
         }}>
             <div>FPS: {fps}</div>
             <div style={{ marginTop: '4px', opacity: 0.8 }}>Session: {sessionId}</div>

@@ -171,32 +171,32 @@
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 29,
-                "y": 13
+                "x": 20.458333333333318,
+                "y": 37
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 10,
-                "y": 20
+                "x": 7,
+                "y": 25
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 39,
-                "y": 16
+                "x": 20,
+                "y": 8
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 40,
-                "y": 23
+                "x": 43.76603234628537,
+                "y": 38.23396765371463
             },
             "respawnTime": 30000
         }
@@ -4779,8 +4779,8 @@
         {
             "x": 480,
             "y": 256,
-            "swatchId": "dirt1",
-            "instanceId": "udwqugqcp"
+            "swatchId": "dirt2",
+            "instanceId": "rbmbdj3kp"
         },
         {
             "x": 480,
@@ -5079,8 +5079,8 @@
         {
             "x": 512,
             "y": 256,
-            "swatchId": "fancy_panel",
-            "instanceId": "i1mhthrv8"
+            "swatchId": "dirt2",
+            "instanceId": "ibvxaktvy"
         },
         {
             "x": 512,

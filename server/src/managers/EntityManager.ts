@@ -113,7 +113,8 @@ export class EntityManager {
             strategy: MonsterStrategyType.PASSIVE, // Default, can be changed based on template
             lastActionTime: Date.now(),
             moveTarget: null,
-            movePath: []
+            movePath: [],
+            sprite: template.sprite
         };
 
         this.monsters[id] = monster;
