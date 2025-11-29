@@ -20,6 +20,7 @@ export class PlayerRenderer {
     private shadowTexture: THREE.Texture;
     private localPlayerId: string | null;
     private localPlayerWalkingSound: { source: AudioBufferSourceNode, gainNode: GainNode } | null = null;
+    private lastDebugUpdateTime: number = 0;
 
     constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, localPlayerId: string | null) {
         this.group = new THREE.Group();
@@ -243,12 +244,16 @@ export class PlayerRenderer {
                         (mesh.geometry.attributes.uv as THREE.BufferAttribute).needsUpdate = true;
 
                         if (id === this.localPlayerId && onDebugUpdate) {
-                            onDebugUpdate(
-                                `State: ${state.facing.toUpperCase()} ${state.isMoving ? '(MOVING)' : '(IDLE)'}\n` +
-                                `Pos: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}\n` +
-                                `Target: ${target ? target.x.toFixed(2) + ', ' + target.y.toFixed(2) : 'None'}\n` +
-                                `Anim: ${animName} [${frameIdx}/${totalFrames}]`
-                            );
+                            const now = Date.now();
+                            if (now - this.lastDebugUpdateTime > 100) {
+                                this.lastDebugUpdateTime = now;
+                                onDebugUpdate(
+                                    `State: ${state.facing.toUpperCase()} ${state.isMoving ? '(MOVING)' : '(IDLE)'}\n` +
+                                    `Pos: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}\n` +
+                                    `Target: ${target ? target.x.toFixed(2) + ', ' + target.y.toFixed(2) : 'None'}\n` +
+                                    `Anim: ${animName} [${frameIdx}/${totalFrames}]`
+                                );
+                            }
                         }
                     }
                 }

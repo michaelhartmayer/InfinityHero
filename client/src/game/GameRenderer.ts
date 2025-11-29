@@ -52,7 +52,12 @@ export class GameRenderer {
         this.camera.zoom = 1;
         this.camera.updateProjectionMatrix();
 
-        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        this.renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: false, // Performance optimization
+            alpha: false, // We have a solid background color
+            powerPreference: "high-performance"
+        });
         this.renderer.setSize(canvas.width, canvas.height);
 
         // Lighting

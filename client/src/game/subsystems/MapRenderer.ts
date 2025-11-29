@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { type WorldMap, TileType } from '@vibemaster/shared';
 import { TilesetLoader } from '../TilesetLoader';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export class MapRenderer {
     public group: THREE.Group;
@@ -58,10 +59,14 @@ export class MapRenderer {
         this.currentMapData = map;
         this.group.clear();
 
-        console.log('🎨 Rendering map with dynamic tilesets');
+        console.log('🎨 Rendering map with dynamic tilesets (Optimized v3)');
 
         const offsetX = map.width / 2;
         const offsetY = map.height / 2;
+
+        // Group geometries by texture UUID/path to merge them later
+        const geometriesByTexture: Map<string, THREE.PlaneGeometry[]> = new Map();
+        const textureCache: Map<string, THREE.Texture> = new Map();
 
         for (let x = 0; x < map.width; x++) {
             for (let y = 0; y < map.height; y++) {
@@ -97,7 +102,7 @@ export class MapRenderer {
                         const tY = tile.textureCoords.y;
 
                         let tileSize = tile.tileSize || 32;
-                        // Legacy hack for stone tileset size if needed, though ideally this should be in tileset data
+                        // Legacy hack for stone tileset size if needed
                         if (!tile.tileSize && tilesetName.includes('stone')) tileSize = 256;
 
                         const u0 = tX / texWidth;
@@ -114,7 +119,6 @@ export class MapRenderer {
                     }
                 } else {
                     // 3. Fallback / Default Tile Logic
-                    // If no explicit tileset/coords, or texture not found, use defaults based on type
                     if (!tilesetName || !texture) {
                         switch (tile.type) {
                             case TileType.WALL:
@@ -135,24 +139,60 @@ export class MapRenderer {
                     }
                 }
 
-                if (!uvs || !texture) continue;
+                if (!uvs || !texture || !tilesetName) continue;
+
+                // Store texture for later use
+                if (!textureCache.has(tilesetName)) {
+                    textureCache.set(tilesetName, texture);
+                }
 
                 const geometry = new THREE.PlaneGeometry(1, 1);
                 const uvAttribute = new THREE.Float32BufferAttribute(uvs, 2);
                 geometry.setAttribute('uv', uvAttribute);
 
+                // Translate geometry to correct position immediately
+                // Invert Y axis: map[0][0] should be at top-left
+                geometry.translate(x - offsetX, (map.height - 1 - y) - offsetY, 0);
+
+                if (!geometriesByTexture.has(tilesetName)) {
+                    geometriesByTexture.set(tilesetName, []);
+                }
+                geometriesByTexture.get(tilesetName)!.push(geometry);
+            }
+        }
+
+        // Determine merge function
+        // @ts-ignore
+        const mergeFn = BufferGeometryUtils.mergeGeometries || BufferGeometryUtils.mergeBufferGeometries;
+
+        if (!mergeFn) {
+            console.error('❌ BufferGeometryUtils.mergeGeometries not found! Map will not render.');
+            console.log('BufferGeometryUtils exports:', BufferGeometryUtils);
+            return;
+        }
+
+        // Merge and create meshes
+        for (const [tilesetName, geometries] of geometriesByTexture) {
+            if (geometries.length === 0) continue;
+
+            const texture = textureCache.get(tilesetName);
+            if (!texture) continue;
+
+            try {
+                const mergedGeometry = mergeFn(geometries);
+
                 const material = new THREE.MeshStandardMaterial({
                     map: texture,
                     side: THREE.FrontSide,
                     transparent: true,
-                    alphaTest: 0.5,
-                    color: tile.color !== undefined ? tile.color : 0xffffff
+                    alphaTest: 0.5
                 });
 
-                const mesh = new THREE.Mesh(geometry, material);
-                // Invert Y axis: map[0][0] should be at top-left
-                mesh.position.set(x - offsetX, (map.height - 1 - y) - offsetY, 0);
+                const mesh = new THREE.Mesh(mergedGeometry, material);
                 this.group.add(mesh);
+                console.log(`✅ Merged ${geometries.length} tiles for ${tilesetName}`);
+            } catch (e) {
+                console.error(`❌ Failed to merge geometries for ${tilesetName}:`, e);
             }
         }
     }
