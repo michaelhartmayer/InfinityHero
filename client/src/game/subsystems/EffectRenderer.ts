@@ -179,6 +179,10 @@ export class EffectRenderer {
         this.vfxLibrary.render(dt);
     }
 
+    public render(dt: number) {
+        this.vfxLibrary.render(dt);
+    }
+
     public resize(width: number, height: number) {
         this.vfxLibrary.resize(width, height);
     }

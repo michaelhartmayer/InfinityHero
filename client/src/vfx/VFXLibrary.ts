@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import { EffectComposer, RenderPass } from 'three-stdlib';
-import { BloomEffect } from './effects/BloomEffect';
+// import { BloomEffect } from './effects/BloomEffect';
 
 export class VFXLibrary {
     private composer: EffectComposer;
     private renderPass: RenderPass;
-    private bloomEffect: BloomEffect;
+    // private bloomEffect: BloomEffect;
 
     constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
-        const width = renderer.domElement.width;
-        const height = renderer.domElement.height;
+        // const width = renderer.domElement.width;
+        // const height = renderer.domElement.height;
 
         this.composer = new EffectComposer(renderer);
 
@@ -18,8 +18,8 @@ export class VFXLibrary {
         this.composer.addPass(this.renderPass);
 
         // Bloom Effect (Default)
-        this.bloomEffect = new BloomEffect(width, height);
-        this.composer.addPass(this.bloomEffect.pass);
+        // this.bloomEffect = new BloomEffect(width, height);
+        // this.composer.addPass(this.bloomEffect.pass);
     }
 
     public render(deltaTime: number) {
@@ -28,6 +28,6 @@ export class VFXLibrary {
 
     public resize(width: number, height: number) {
         this.composer.setSize(width, height);
-        this.bloomEffect.setSize(width, height);
+        // this.bloomEffect.setSize(width, height);
     }
 }

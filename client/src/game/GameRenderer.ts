@@ -230,7 +230,7 @@ export class GameRenderer {
             this.camera.position.y += (localPlayerMesh.position.y - this.camera.position.y) * cameraLerpFactor;
         }
 
-        this.renderer.render(this.scene, this.camera);
+        this.effectRenderer.render(dt);
         this.lastDrawCalls = this.renderer.info.render.calls;
         this.uiRenderer.render(this.scene, this.camera);
     }
