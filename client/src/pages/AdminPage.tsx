@@ -2262,7 +2262,16 @@ const SpriteForm = () => {
                         if (!found.pivot) found.pivot = { x: 0.5, y: 1.0 };
                         if (found.offsetX === undefined) found.offsetX = 0;
                         if (found.offsetY === undefined) found.offsetY = 0;
-                        if (found.spacing === undefined) found.spacing = 0;
+
+                        // Migration
+                        if ((found as any).spacing !== undefined) {
+                            found.spacingX = (found as any).spacing;
+                            found.spacingY = (found as any).spacing;
+                        }
+
+                        if (found.spacingX === undefined) found.spacingX = 0;
+                        if (found.spacingY === undefined) found.spacingY = 0;
+
                         setEditing(found);
                         if (Object.keys(found.animations).length > 0) {
                             setActiveAnim(Object.keys(found.animations)[0]);
@@ -2280,7 +2289,8 @@ const SpriteForm = () => {
                 pivot: { x: 0.5, y: 1.0 },
                 offsetX: 0,
                 offsetY: 0,
-                spacing: 0
+                spacingX: 0,
+                spacingY: 0
             });
         }
     }, [id, isNew]);
@@ -2762,6 +2772,7 @@ const SpriteForm = () => {
                     )}
                 </div>
             </div>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 };

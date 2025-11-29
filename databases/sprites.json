@@ -5,7 +5,7 @@
             "name": "Dev Guy",
             "type": "character",
             "texture": "dev-rpg-characters-1.png",
-            "frameWidth": 50,
+            "frameWidth": 52,
             "frameHeight": 72,
             "animations": {
                 "WALK_LEFT": {
@@ -55,7 +55,9 @@
             },
             "offsetX": 0,
             "offsetY": 0,
-            "spacing": 0
+            "spacing": 0,
+            "spacingX": 0,
+            "spacingY": 0
         }
     ]
 }

@@ -165,6 +165,7 @@ export function GamePage() {
 
     const [isInventoryOpen, setIsInventoryOpen] = useState(false);
     const [isChatMode, setIsChatMode] = useState(false);
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -233,7 +234,7 @@ export function GamePage() {
     return (
         <div className="App">
             <div className="ui-layer">
-                {socket?.id && <DebugPanel sessionId={socket.id} />}
+                {socket?.id && <DebugPanel sessionId={socket.id} animationInfo={debugInfo} />}
                 {localPlayer && <HUD player={localPlayer} />}
 
                 <div className="center-ui">
@@ -264,6 +265,7 @@ export function GamePage() {
                     localPlayerId={socket?.id || null}
                     lastMessage={messages.length > 0 ? messages[messages.length - 1] : null}
                     onMove={handleMove}
+                    onDebugUpdate={setDebugInfo}
                 />
             </div>
         </div>

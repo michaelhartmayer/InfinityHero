@@ -5,6 +5,7 @@ import { type WorldMap, TileType, type Player, type Item, type Monster } from '@
 import { VFXLibrary } from '../vfx/VFXLibrary';
 import { CursorGroundEffect } from '../vfx/effects/CursorGroundEffect';
 import { TilesetLoader } from './TilesetLoader';
+import { SpriteLoader } from './SpriteLoader';
 
 export const CursorState = {
     PASSIVE: 0,
@@ -41,6 +42,13 @@ export class GameRenderer {
     private cursorGroundEffect: CursorGroundEffect;
     private cursorPosition: { x: number, y: number } | null = null;
     private tilesetLoader: TilesetLoader;
+    private spriteLoader: SpriteLoader;
+    private playerStates: Map<string, {
+        facing: 'down' | 'left' | 'right' | 'up';
+        isMoving: boolean;
+        lastPosition: { x: number, y: number };
+        animationTime: number;
+    }> = new Map();
     private cursorState: CursorState = CursorState.PASSIVE;
 
     private currentMapData: WorldMap | null = null;
@@ -116,9 +124,10 @@ export class GameRenderer {
         this.cursorGroundEffect = new CursorGroundEffect();
         this.scene.add(this.cursorGroundEffect.group);
 
-        // Initialize tileset loader
+        // Initialize loaders
         this.tilesetLoader = new TilesetLoader();
-        this.loadTilesets();
+        this.spriteLoader = new SpriteLoader();
+        this.loadAssets();
 
         // Create shadow texture
         this.shadowTexture = this.createShadowTexture();
@@ -144,7 +153,7 @@ export class GameRenderer {
         return texture;
     }
 
-    private async loadTilesets() {
+    private async loadAssets() {
         await Promise.all([
             this.tilesetLoader.loadTileset(
                 'grass',
@@ -155,16 +164,36 @@ export class GameRenderer {
                 'stone',
                 '/assets/tilesets/dev-tileset-stone.json',
                 '/assets/tilesets/dev-tileset-stone.png'
+            ),
+            this.spriteLoader.loadSprite(
+                'dev-rpg-characters-1',
+                '/assets/sprites/dev-rpg-characters-1.json',
+                '/assets/sprites/dev-rpg-characters-1.png'
             )
         ]);
 
-        console.log('✅ Tilesets loaded successfully');
+        console.log('✅ Assets loaded successfully');
 
         // Re-render map if it was already loaded
         if (this.currentMapData) {
-            console.log('🔄 Re-rendering map with loaded tilesets');
+            console.log('🔄 Re-rendering map with loaded assets');
             this.renderMap(this.currentMapData);
         }
+
+        // Clear existing player meshes to force re-creation with sprites
+        console.log('🔄 Clearing player meshes to apply sprites');
+        for (const mesh of this.playerMeshes.values()) {
+            // Explicitly remove CSS2DObjects
+            const label = mesh.children.find(c => c instanceof CSS2DObject);
+            if (label) {
+                mesh.remove(label);
+            }
+            this.playersGroup.remove(mesh);
+        }
+        this.playerMeshes.clear();
+        this.playerStates.clear();
+        this.playerTargets.clear();
+        this.chatBubbles.clear();
     }
 
     public setCursorState(state: CursorState) {
@@ -469,69 +498,86 @@ export class GameRenderer {
         for (const player of Object.values(players)) {
             let mesh = this.playerMeshes.get(player.id);
             if (!mesh) {
-                let geometry: THREE.BufferGeometry;
-                let color: number;
+                const spriteId = 'dev-rpg-characters-1';
+                const texture = this.spriteLoader.getTexture(spriteId);
 
-                switch (player.class) {
-                    case 'warrior':
-                        geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-                        color = 0x3f51b5; // Indigo
-                        break;
-                    case 'mage':
-                        geometry = new THREE.ConeGeometry(0.5, 1, 8);
-                        color = 0x9c27b0; // Purple
-                        break;
-                    case 'rogue':
-                        geometry = new THREE.OctahedronGeometry(0.5);
-                        color = 0xffeb3b; // Yellow
-                        break;
-                    case 'cleric':
-                        geometry = new THREE.CylinderGeometry(0.4, 0.4, 0.8, 8);
-                        color = 0xe0f7fa; // Cyan/White
-                        break;
-                    case 'ranger':
-                        geometry = new THREE.ConeGeometry(0.4, 1, 4); // Pyramid
-                        color = 0x4caf50; // Green
-                        break;
-                    case 'paladin':
-                        geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
-                        color = 0xffd700; // Gold
-                        break;
-                    default:
-                        geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-                        color = 0x9e9e9e; // Grey
+                if (texture) {
+                    // User requested 1.25 grid squares height
+                    const geometry = new THREE.PlaneGeometry(1, 1.25);
+                    const material = new THREE.MeshStandardMaterial({
+                        map: texture,
+                        transparent: true,
+                        alphaTest: 0.5,
+                        side: THREE.DoubleSide
+                    });
+                    mesh = new THREE.Mesh(geometry, material);
+
+                    // Offset sprite to stand on ground (center is at 0,0, so move up by half height)
+                    // But our map logic assumes z=0 is ground.
+                    // The mesh position is set to x,y,0.
+                    // If height is 1.25, we need to shift the geometry up so the feet are at 0.
+                    // Actually, let's keep the mesh position logic and just offset the geometry or a child mesh.
+                    // But here we are creating the mesh directly.
+                    // Let's offset the geometry vertices or just adjust the mesh position in update loop?
+                    // Adjusting geometry is cleaner for rotation/scaling.
+                    geometry.translate(0, 0.125, 0); // Shift up by (1.25 - 1)/2 = 0.125? 
+                    // No, if height is 1.25, center is at 0.625. Feet are at 0.
+                    // If we want feet at -0.5 (relative to center 0), we need center at 0.125?
+                    // Wait, standard 1x1 box has center at 0,0. Feet at -0.5.
+                    // 1x1.25 plane has center at 0,0. Feet at -0.625.
+                    // We want feet at -0.4 (shadow position) or just visually correct.
+                    // Let's try shifting up by 0.125 to align center with 1x1 box center?
+                    // Or better, let's just use the requested size.
+
+                    // Initialize state
+                    this.playerStates.set(player.id, {
+                        facing: 'down',
+                        isMoving: false,
+                        lastPosition: { x: player.position.x, y: player.position.y },
+                        animationTime: 0
+                    });
+
+                    // Initial UVs (Down frame 1 - middle)
+                    const uvs = this.spriteLoader.getFrameUVs(spriteId, 1);
+                    if (uvs) {
+                        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                    }
+                } else {
+                    // Fallback geometry
+                    const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+                    const material = new THREE.MeshStandardMaterial({ color: 0x9e9e9e });
+                    mesh = new THREE.Mesh(geometry, material);
+
+                    const headGeo = new THREE.SphereGeometry(0.25, 8, 8);
+                    const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc80 });
+                    const head = new THREE.Mesh(headGeo, headMat);
+                    head.position.y = 0.6;
+                    mesh.add(head);
                 }
-
-                const material = new THREE.MeshStandardMaterial({ color });
-                mesh = new THREE.Mesh(geometry, material);
-
-                const headGeo = new THREE.SphereGeometry(0.25, 8, 8);
-                const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc80 });
-                const head = new THREE.Mesh(headGeo, headMat);
-                head.position.y = 0.6;
-                mesh.add(head);
 
                 if (player.id === this.localPlayerId) {
                     const ringGeo = new THREE.RingGeometry(0.4, 0.5, 32);
                     const ringMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide });
                     const ring = new THREE.Mesh(ringGeo, ringMat);
-                    ring.rotation.x = -Math.PI / 2;
-                    ring.position.y = -0.39;
+                    ring.rotation.x = -Math.PI / 2; // Flat on ground
+                    // Adjust ring position for sprite (z is up/down in 3D, but here y is up/down on screen)
+                    // Actually in this 2D setup, Z is depth.
+                    // The ring should be behind the player.
+                    ring.position.z = -0.1;
                     mesh.add(ring);
                 }
 
                 // Add Shadow
-                const shadowGeo = new THREE.PlaneGeometry(1.2, 0.6); // Squashed vertically
+                const shadowGeo = new THREE.PlaneGeometry(0.8, 0.4);
                 const shadowMat = new THREE.MeshBasicMaterial({
                     map: this.shadowTexture,
                     transparent: true,
                     depthWrite: false,
-                    opacity: 0.8
+                    opacity: 0.6
                 });
                 const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-                // No rotation needed for 2D top-down (XY plane)
-                shadow.position.y = -0.4; // At the feet (South)
-                shadow.position.z = -0.35; // Behind player, just above map (World Z ~ 0.05)
+                shadow.position.y = -0.4; // Feet
+                shadow.position.z = -0.2; // Behind
                 mesh.add(shadow);
 
                 // Add Name Label
@@ -539,7 +585,7 @@ export class GameRenderer {
                 div.className = 'player-label';
                 div.textContent = player.name;
                 const label = new CSS2DObject(div);
-                label.position.set(0, 1.5, 0); // Above head
+                label.position.set(0, 0.6, 0); // Above head
                 mesh.add(label);
 
                 this.playersGroup.add(mesh);
@@ -786,11 +832,92 @@ export class GameRenderer {
         this.vfxLibrary.resize(width, height);
     }
 
+    public onDebugUpdate: ((info: string) => void) | null = null;
+
+    private updateAnimations(dt: number) {
+        for (const [id, state] of this.playerStates) {
+            const mesh = this.playerMeshes.get(id);
+            if (!mesh) continue;
+
+            // Calculate movement
+            // Let's use mesh position delta
+            const dx = mesh.position.x - state.lastPosition.x;
+            const dy = mesh.position.y - state.lastPosition.y;
+
+            const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+            state.isMoving = moved;
+
+            if (moved) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    state.facing = dx > 0 ? 'right' : 'left';
+                } else {
+                    state.facing = dy > 0 ? 'up' : 'down';
+                }
+                state.animationTime += dt;
+            } else {
+                state.animationTime = 0;
+            }
+
+            state.lastPosition.x = mesh.position.x;
+            state.lastPosition.y = mesh.position.y;
+
+            // Update UVs
+            const spriteId = 'dev-rpg-characters-1';
+            const sprite = this.spriteLoader.getSprite(spriteId);
+            if (sprite && sprite.animations) {
+                const action = state.isMoving ? 'walk' : 'idle';
+                const animName = `${action}_${state.facing}`;
+                const anim = sprite.animations[animName];
+
+                if (anim && anim.frames.length > 0) {
+                    const totalFrames = anim.frames.length;
+                    // Use modulo to loop
+                    const frameIdx = Math.floor(state.animationTime * anim.frameRate) % totalFrames;
+                    const frame = anim.frames[frameIdx];
+
+                    const uvs = this.spriteLoader.getFrameUVs(spriteId, frame);
+                    if (uvs) {
+                        mesh.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                        mesh.geometry.attributes.uv.needsUpdate = true;
+
+                        // Debug info for local player
+                        if (id === this.localPlayerId && this.onDebugUpdate) {
+                            this.onDebugUpdate(`Anim: ${animName} [${frameIdx}/${totalFrames}]`);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private animate = (time: number) => {
         requestAnimationFrame(this.animate);
 
         const dt = Math.min((time - this.lastFrameTime) / 1000, 0.1); // Clamp dt to 100ms
         this.lastFrameTime = time;
+
+        // Update animations
+        this.updateAnimations(dt);
+
+        // Interpolate positions
+        const lerpFactor = 10 * dt; // Adjust for smoothness
+
+        for (const [id, target] of this.playerTargets) {
+            const mesh = this.playerMeshes.get(id);
+            if (mesh) {
+                mesh.position.x += (target.x - mesh.position.x) * lerpFactor;
+                mesh.position.y += (target.y - mesh.position.y) * lerpFactor;
+                // Z is constant
+            }
+        }
+
+        for (const [id, target] of this.monsterTargets) {
+            const mesh = this.monsterMeshes.get(id);
+            if (mesh) {
+                mesh.position.x += (target.x - mesh.position.x) * lerpFactor;
+                mesh.position.y += (target.y - mesh.position.y) * lerpFactor;
+            }
+        }
 
         // Animate highlight
         if (this.highlightMesh.visible) {

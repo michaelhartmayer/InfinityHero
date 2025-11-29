@@ -10,9 +10,10 @@ interface GameCanvasProps {
     localPlayerId: string | null;
     lastMessage: ChatMessage | null;
     onMove: (x: number, y: number) => void;
+    onDebugUpdate?: (info: string) => void;
 }
 
-export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, onMove }: GameCanvasProps) {
+export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, onMove, onDebugUpdate }: GameCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<GameRenderer | null>(null);
     const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
@@ -24,6 +25,9 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
 
         // Initialize renderer
         rendererRef.current = new GameRenderer(canvasRef.current, localPlayerId);
+        if (onDebugUpdate) {
+            rendererRef.current.onDebugUpdate = onDebugUpdate;
+        }
 
         // Handle resize
         const handleResize = () => {

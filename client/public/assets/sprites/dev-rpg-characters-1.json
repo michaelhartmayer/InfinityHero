@@ -3,7 +3,76 @@
     "name": "Dev RPG Characters 1",
     "type": "character",
     "texture": "dev-rpg-characters-1.png",
-    "frameWidth": 32,
-    "frameHeight": 32,
-    "animations": {}
+    "frameWidth": 52,
+    "frameHeight": 72,
+    "animations": {
+        "walk_down": {
+            "frames": [
+                0,
+                1,
+                2,
+                1
+            ],
+            "frameRate": 8,
+            "loop": true
+        },
+        "walk_left": {
+            "frames": [
+                12,
+                13,
+                14,
+                13
+            ],
+            "frameRate": 8,
+            "loop": true
+        },
+        "walk_right": {
+            "frames": [
+                24,
+                25,
+                26,
+                25
+            ],
+            "frameRate": 8,
+            "loop": true
+        },
+        "walk_up": {
+            "frames": [
+                36,
+                37,
+                38,
+                37
+            ],
+            "frameRate": 8,
+            "loop": true
+        },
+        "idle_down": {
+            "frames": [
+                1
+            ],
+            "frameRate": 1,
+            "loop": true
+        },
+        "idle_left": {
+            "frames": [
+                13
+            ],
+            "frameRate": 1,
+            "loop": true
+        },
+        "idle_right": {
+            "frames": [
+                25
+            ],
+            "frameRate": 1,
+            "loop": true
+        },
+        "idle_up": {
+            "frames": [
+                37
+            ],
+            "frameRate": 1,
+            "loop": true
+        }
+    }
 }

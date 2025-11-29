@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 
 interface DebugPanelProps {
     sessionId: string;
+    animationInfo?: string;
 }
 
-export const DebugPanel: React.FC<DebugPanelProps> = ({ sessionId }) => {
+export const DebugPanel: React.FC<DebugPanelProps> = ({ sessionId, animationInfo }) => {
     const [fps, setFps] = useState(0);
     const frameCount = useRef(0);
     const lastTime = useRef(performance.now());
@@ -51,6 +52,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ sessionId }) => {
         }}>
             <div>FPS: {fps}</div>
             <div style={{ marginTop: '4px', opacity: 0.8 }}>Session: {sessionId}</div>
+            {animationInfo && <div style={{ marginTop: '4px', color: '#aaa' }}>{animationInfo}</div>}
         </div>
     );
 };
