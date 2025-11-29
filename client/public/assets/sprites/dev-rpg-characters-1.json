@@ -1,0 +1,9 @@
+{
+    "id": "dev-rpg-characters-1",
+    "name": "Dev RPG Characters 1",
+    "type": "character",
+    "texture": "dev-rpg-characters-1.png",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "animations": {}
+}

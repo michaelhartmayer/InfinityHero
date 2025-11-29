@@ -171,32 +171,32 @@
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 37,
-                "y": 3
+                "x": 29,
+                "y": 13
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 47,
-                "y": 1
+                "x": 10,
+                "y": 20
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 3,
-                "y": 8
+                "x": 39,
+                "y": 16
             },
             "respawnTime": 30000
         },
         {
             "monsterId": "slime_green",
             "position": {
-                "x": 28,
-                "y": 11
+                "x": 40,
+                "y": 23
             },
             "respawnTime": 30000
         }
@@ -4179,26 +4179,26 @@
         {
             "x": 416,
             "y": 256,
-            "swatchId": "dirt6",
-            "instanceId": "q50tmgjrl"
+            "swatchId": "cobble2",
+            "instanceId": "fdc2nwq3f"
         },
         {
             "x": 416,
             "y": 288,
-            "swatchId": "dirt4",
-            "instanceId": "0422krhqy"
+            "swatchId": "cobble2",
+            "instanceId": "2f23uov89"
         },
         {
             "x": 416,
             "y": 320,
-            "swatchId": "dirt1",
-            "instanceId": "h5rlp3tou"
+            "swatchId": "cobble2",
+            "instanceId": "3lookg1mr"
         },
         {
             "x": 416,
             "y": 352,
-            "swatchId": "dirt6",
-            "instanceId": "sykb7la1s"
+            "swatchId": "cobble2",
+            "instanceId": "i0abg4yq1"
         },
         {
             "x": 416,
@@ -4479,26 +4479,26 @@
         {
             "x": 448,
             "y": 256,
-            "swatchId": "dirt1",
-            "instanceId": "p9nntfcqe"
+            "swatchId": "cobble2",
+            "instanceId": "p1hhrtpit"
         },
         {
             "x": 448,
             "y": 288,
-            "swatchId": "dirt5",
-            "instanceId": "i7a28cfmc"
+            "swatchId": "cobble2",
+            "instanceId": "rpyucojp0"
         },
         {
             "x": 448,
             "y": 320,
-            "swatchId": "dirt2",
-            "instanceId": "1tsm4gcvr"
+            "swatchId": "cobble2",
+            "instanceId": "379ihgi5c"
         },
         {
             "x": 448,
             "y": 352,
-            "swatchId": "dirt4",
-            "instanceId": "alo9gxq3u"
+            "swatchId": "cobble2",
+            "instanceId": "szq1cyakn"
         },
         {
             "x": 448,
@@ -5079,8 +5079,8 @@
         {
             "x": 512,
             "y": 256,
-            "swatchId": "dirt3",
-            "instanceId": "2n2jqd8jh"
+            "swatchId": "fancy_panel",
+            "instanceId": "i1mhthrv8"
         },
         {
             "x": 512,

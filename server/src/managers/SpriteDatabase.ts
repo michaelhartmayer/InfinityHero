@@ -17,6 +17,11 @@ export interface SpriteTemplate {
         frameRate: number;
         loop: boolean;
     }>;
+    pivot?: { x: number; y: number };
+    offsetX?: number;
+    offsetY?: number;
+    spacingX?: number;
+    spacingY?: number;
 }
 
 export class SpriteDatabase {

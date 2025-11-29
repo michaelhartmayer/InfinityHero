@@ -1,13 +1,61 @@
 {
     "sprites": [
         {
-            "id": "dev-soldier",
-            "name": "Dev Soldier",
+            "id": "dev_guy",
+            "name": "Dev Guy",
             "type": "character",
-            "texture": "dev-soldier.png",
-            "frameWidth": 32,
-            "frameHeight": 32,
-            "animations": {}
+            "texture": "dev-rpg-characters-1.png",
+            "frameWidth": 50,
+            "frameHeight": 72,
+            "animations": {
+                "WALK_LEFT": {
+                    "frames": [
+                        12,
+                        13,
+                        14,
+                        13
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "WALK_RIGHT": {
+                    "frames": [
+                        24,
+                        25,
+                        26,
+                        25
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "WALK_DOWN": {
+                    "frames": [
+                        0,
+                        1,
+                        2,
+                        1
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "WALK_UP": {
+                    "frames": [
+                        36,
+                        37,
+                        38,
+                        37
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                }
+            },
+            "pivot": {
+                "x": 0.5,
+                "y": 1
+            },
+            "offsetX": 0,
+            "offsetY": 0,
+            "spacing": 0
         }
     ]
 }
