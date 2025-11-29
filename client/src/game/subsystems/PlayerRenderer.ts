@@ -20,6 +20,7 @@ export class PlayerRenderer {
     private shadowTexture: THREE.Texture;
     private localPlayerId: string | null;
     private localPlayerWalkingSound: { source: AudioBufferSourceNode, gainNode: GainNode } | null = null;
+    private isWalkingSoundLoading: boolean = false;
     private lastDebugUpdateTime: number = 0;
 
     private static materialCache: Map<string, THREE.Material> = new Map();
@@ -210,11 +211,19 @@ export class PlayerRenderer {
 
             // Handle local player walking sound
             if (id === this.localPlayerId) {
-                if (isMoving && !this.localPlayerWalkingSound) {
+                if (isMoving && !this.localPlayerWalkingSound && !this.isWalkingSoundLoading) {
                     // Start looping walking sound
+                    this.isWalkingSoundLoading = true;
                     AudioManager.getInstance().playLoopingSFX('/assets/sounds/dev-pc-walking.mp3', 0.5).then(soundNodes => {
+                        this.isWalkingSoundLoading = false;
                         if (soundNodes) {
-                            this.localPlayerWalkingSound = soundNodes;
+                            // Check if we stopped moving while loading
+                            if (!state.isMoving) {
+                                AudioManager.getInstance().fadeOutSound(soundNodes.gainNode, 0.1);
+                                soundNodes.source.stop(AudioManager.getInstance()['audioContext']!.currentTime + 0.1);
+                            } else {
+                                this.localPlayerWalkingSound = soundNodes;
+                            }
                         }
                     });
                 } else if (!isMoving && this.localPlayerWalkingSound) {
