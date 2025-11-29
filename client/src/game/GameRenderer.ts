@@ -324,8 +324,8 @@ export class GameRenderer {
                     // But texture might not be fully loaded? It should be if we are here.
 
                     if (texture.image) {
-                        const texWidth = texture.image.width;
-                        const texHeight = texture.image.height;
+                        const texWidth = (texture.image as HTMLImageElement).width;
+                        const texHeight = (texture.image as HTMLImageElement).height;
                         const tX = tile.textureCoords.x;
                         const tY = tile.textureCoords.y;
                         // Assuming 32px grid size for now, or we need to know the swatch grid size.
@@ -402,7 +402,7 @@ export class GameRenderer {
                     // Get a random tile variant for variety
                     const randomTile = this.tilesetLoader.getRandomTile(tilesetName);
                     if (randomTile) {
-                        uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id);
+                        uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id) || null;
                     }
                 }
 

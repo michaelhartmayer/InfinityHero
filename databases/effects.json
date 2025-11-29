@@ -1,0 +1,326 @@
+[
+    {
+        "id": "cursor_ground_effect",
+        "name": "Cursor Ground Effect",
+        "layers": [
+            {
+                "id": "particles",
+                "name": "Particles",
+                "type": "points",
+                "geometryType": "ring",
+                "count": 60,
+                "blending": "additive",
+                "attributeConfig": {
+                    "sizeStart": 0.35,
+                    "sizeEnd": 0.05,
+                    "kindPattern": "0,1,1,1,1,1,1,2"
+                },
+                "vertexShader": "attribute float size;\nattribute vec3 color;\nattribute float alpha;\nattribute float kind;\nattribute float angle;\nvarying vec3 vColor;\nvarying float vAlpha;\nvarying float vKind;\nuniform float uTime;\n\nvoid main() {\n    vColor = color;\n    vAlpha = alpha;\n    vKind = kind;\n    \n    // Match original speed (approx 5.0 rad/s) and direction (CW)\n    // Original: angle -= 0.08 per frame (60fps) => -4.8 rad/s\n    float speed = 4.8;\n    float currentHeadAngle = -uTime * speed;\n    \n    // Match original trail length (60 particles * 0.08 = 4.8 radians)\n    // 'angle' attribute is 0..2PI. Scale it to match trail length.\n    float trailLength = 4.8;\n    float particleOffset = angle * (trailLength / 6.28318);\n    \n    // Tail particles are 'behind' in time, but since moving negative direction,\n    // they should have POSITIVE offset relative to head.\n    float orbitAngle = currentHeadAngle + particleOffset;\n    \n    float baseRadius = 0.9;\n    float verticalSquash = 0.45;\n    float depthAmplitude = 0.35;\n    float perspectiveStrength = 0.45;\n    \n    float depth = sin(orbitAngle);\n    float perspectiveScale = 1.0 - perspectiveStrength * depth;\n    \n    float localX = cos(orbitAngle) * baseRadius * perspectiveScale;\n    float localY = sin(orbitAngle) * baseRadius * verticalSquash * perspectiveScale;\n    float localZ = 0.05 + depth * depthAmplitude;\n    \n    vec3 pos = vec3(localX, localY, localZ);\n    \n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    \n    // Pulse size\n    float pulse = sin(uTime * 8.0) * 0.15 + 1.0;\n    gl_PointSize = size * 150.0 * pulse / -mvPosition.z;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "uniform float uTime;\nvarying vec3 vColor;\nvarying float vAlpha;\nvarying float vKind;\n\nfloat hash(vec2 p) {\n    p = fract(p * vec2(123.34, 456.21));\n    p += dot(p, p + 45.32);\n    return fract(p.x * p.y);\n}\n\nvoid main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    float dist = length(uv);\n    \n    float core = smoothstep(0.28, 0.0, dist);\n    float halo = smoothstep(0.7, 0.0, dist);\n    \n    // Star rays\n    float angle = atan(uv.y, uv.x);\n    float rayPattern = sin(angle * 10.0 + uTime * 4.0) * 0.5 + 0.5;\n    float rays = rayPattern * core * 0.7;\n    \n    vec3 baseColor = vec3(0.3, 0.8, 1.0); // Cyan base\n    float brightness = 0.0;\n    \n    if (vKind < 0.5) {\n        // Core\n        brightness = core * 1.8 + halo * 0.8 + rays * 1.0;\n        baseColor *= vec3(1.2, 1.1, 1.0);\n    } else if (vKind < 1.5) {\n        // Smoke\n        brightness = halo * 1.2;\n        baseColor *= vec3(0.7, 0.9, 1.1);\n    } else {\n        // Spark\n        brightness = core * 0.4 + halo * 0.3;\n        baseColor *= vec3(1.6, 1.5, 1.3);\n    }\n    \n    float alpha = brightness * vAlpha;\n    if (dist > 0.55 || alpha < 0.02) discard;\n    \n    gl_FragColor = vec4(baseColor * brightness, alpha);\n}"
+            },
+            {
+                "id": "band",
+                "name": "Orbit Band",
+                "type": "line",
+                "geometryType": "ring",
+                "count": 60,
+                "blending": "additive",
+                "vertexShader": "attribute float alpha;\nattribute float angle;\nvarying float vAlpha;\nuniform float uTime;\n\nvoid main() {\n    vAlpha = alpha;\n    \n    float speed = 4.8;\n    float currentHeadAngle = -uTime * speed;\n    float trailLength = 4.8;\n    float particleOffset = angle * (trailLength / 6.28318);\n    float orbitAngle = currentHeadAngle + particleOffset;\n    \n    float baseRadius = 0.9;\n    float verticalSquash = 0.45;\n    float depthAmplitude = 0.35;\n    float perspectiveStrength = 0.45;\n    \n    float depth = sin(orbitAngle);\n    float perspectiveScale = 1.0 - perspectiveStrength * depth;\n    \n    float localX = cos(orbitAngle) * baseRadius * perspectiveScale;\n    float localY = sin(orbitAngle) * baseRadius * verticalSquash * perspectiveScale;\n    float localZ = (0.05 + depth * depthAmplitude) * 0.4; // Flatter for band\n    \n    vec3 pos = vec3(localX, localY, localZ);\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "varying float vAlpha;\nvoid main() {\n    gl_FragColor = vec4(0.6, 0.9, 1.2, vAlpha * 0.7);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "fireball",
+        "name": "Fireball",
+        "layers": [
+            {
+                "id": "core",
+                "name": "Core",
+                "type": "mesh",
+                "geometryType": "sphere",
+                "count": 1,
+                "blending": "additive",
+                "vertexShader": "varying vec2 vUv;\nuniform float uTime;\nvoid main() {\n    vUv = uv;\n    vec3 pos = position;\n    // Wobble\n    pos += normal * sin(uTime * 10.0 + pos.y * 5.0) * 0.05;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "varying vec2 vUv;\nuniform float uTime;\nvoid main() {\n    // Simple noise approximation\n    float noise = sin(vUv.x * 10.0 + uTime * 5.0) * sin(vUv.y * 10.0 - uTime * 2.0);\n    vec3 color = mix(vec3(1.0, 0.2, 0.0), vec3(1.0, 0.8, 0.0), noise * 0.5 + 0.5);\n    gl_FragColor = vec4(color, 1.0);\n}"
+            },
+            {
+                "id": "trail",
+                "name": "Trail Particles",
+                "type": "points",
+                "geometryType": "sphere",
+                "count": 50,
+                "blending": "additive",
+                "attributeConfig": {
+                    "sizeStart": 0.5,
+                    "sizeEnd": 0.1
+                },
+                "vertexShader": "attribute float size;\nattribute float angle;\nuniform float uTime;\nvarying float vAlpha;\nvoid main() {\n    // Move particles back along Z\n    float speed = 2.0;\n    float zOffset = mod(uTime * speed + angle, 2.0);\n    vec3 pos = position;\n    pos.z += zOffset;\n    pos.x *= (1.0 - zOffset * 0.2); // Taper\n    pos.y *= (1.0 - zOffset * 0.2);\n    \n    vAlpha = 1.0 - (zOffset / 2.0);\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = size * 100.0 / -mvPosition.z;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "varying float vAlpha;\nvoid main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    float dist = length(uv);\n    if (dist > 0.5) discard;\n    float glow = 1.0 - dist * 2.0;\n    gl_FragColor = vec4(1.0, 0.4, 0.1, vAlpha * glow);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "ice_nova",
+        "name": "Ice Nova",
+        "layers": [
+            {
+                "id": "ring",
+                "name": "Expanding Ring",
+                "type": "mesh",
+                "geometryType": "ring",
+                "count": 1,
+                "blending": "additive",
+                "vertexShader": "varying vec2 vUv;\nuniform float uTime;\nvoid main() {\n    vUv = uv;\n    float scale = mod(uTime * 2.0, 3.0);\n    vec3 pos = position * scale;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "varying vec2 vUv;\nvoid main() {\n    float dist = length(vUv - 0.5) * 2.0;\n    float ring = smoothstep(0.8, 0.9, dist) * smoothstep(1.0, 0.9, dist);\n    gl_FragColor = vec4(0.5, 0.8, 1.0, ring);\n}"
+            },
+            {
+                "id": "shards",
+                "name": "Ice Shards",
+                "type": "points",
+                "geometryType": "sphere",
+                "count": 100,
+                "blending": "additive",
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nvoid main() {\n    float t = mod(uTime * 2.0, 3.0);\n    vec3 dir = normalize(position);\n    vec3 pos = dir * t * 1.5;\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 5.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "void main() {\n    gl_FragColor = vec4(0.8, 0.9, 1.0, 1.0);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "heal_aura",
+        "name": "Heal Aura",
+        "layers": [
+            {
+                "id": "particles",
+                "name": "Floating Crosses",
+                "type": "points",
+                "geometryType": "box",
+                "count": 30,
+                "blending": "additive",
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nvarying float vAlpha;\nvoid main() {\n    float speed = 1.0;\n    float yOffset = mod(uTime * speed + angle * 10.0, 2.0);\n    vec3 pos = position;\n    pos.y = yOffset - 1.0;\n    pos.x *= 0.5; pos.z *= 0.5;\n    vAlpha = 1.0 - abs(pos.y);\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 20.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "varying float vAlpha;\nvoid main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    // Cross shape\n    float cross = 0.0;\n    if (abs(uv.x) < 0.15 && abs(uv.y) < 0.45) cross = 1.0;\n    if (abs(uv.y) < 0.15 && abs(uv.x) < 0.45) cross = 1.0;\n    if (cross < 0.5) discard;\n    gl_FragColor = vec4(0.2, 1.0, 0.4, vAlpha);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "slash_arc",
+        "name": "Slash Arc",
+        "layers": [
+            {
+                "id": "arc",
+                "name": "Swipe",
+                "type": "line",
+                "geometryType": "ring",
+                "count": 50,
+                "blending": "additive",
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nvarying float vAlpha;\nvoid main() {\n    float t = mod(uTime * 3.0, 1.0);\n    // Only show segment\n    float startAngle = -1.0;\n    float endAngle = 1.0;\n    float currentAngle = angle - 3.14; // Center it\n    \n    // Rotate arc\n    float rot = t * 3.14;\n    float c = cos(rot); float s = sin(rot);\n    vec3 pos = position;\n    float x = pos.x * c - pos.z * s;\n    float z = pos.x * s + pos.z * c;\n    pos.x = x; pos.z = z;\n    \n    vAlpha = 1.0 - t;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "varying float vAlpha;\nvoid main() {\n    gl_FragColor = vec4(1.0, 1.0, 1.0, vAlpha);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "shield_bubble",
+        "name": "Shield Bubble",
+        "layers": [
+            {
+                "id": "bubble",
+                "name": "Bubble",
+                "type": "mesh",
+                "geometryType": "sphere",
+                "count": 1,
+                "blending": "additive",
+                "vertexShader": "varying vec3 vNormal;\nvarying vec3 vViewDir;\nvoid main() {\n    vNormal = normalize(normalMatrix * normal);\n    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n    vViewDir = normalize(-mvPosition.xyz);\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "varying vec3 vNormal;\nvarying vec3 vViewDir;\nuniform float uTime;\nvoid main() {\n    float fresnel = pow(1.0 - dot(vNormal, vViewDir), 3.0);\n    // Hex pattern approximation\n    float hex = sin(vNormal.x * 20.0) * sin(vNormal.y * 20.0);\n    float alpha = fresnel * 0.8 + (hex > 0.9 ? 0.5 : 0.0);\n    gl_FragColor = vec4(0.0, 0.5, 1.0, alpha);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "poison_cloud",
+        "name": "Poison Cloud",
+        "layers": [
+            {
+                "id": "gas",
+                "name": "Gas Particles",
+                "type": "points",
+                "geometryType": "sphere",
+                "count": 100,
+                "blending": "normal",
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nvarying float vAlpha;\nvoid main() {\n    vec3 pos = position;\n    // Chaotic movement\n    pos.x += sin(uTime + angle * 10.0) * 0.2;\n    pos.z += cos(uTime * 0.8 + angle * 5.0) * 0.2;\n    pos.y += sin(uTime * 0.5) * 0.1;\n    vAlpha = 0.6;\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 50.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "varying float vAlpha;\nvoid main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    float dist = length(uv);\n    if (dist > 0.5) discard;\n    float density = (1.0 - dist * 2.0);\n    gl_FragColor = vec4(0.2, 0.8, 0.1, vAlpha * density * 0.5);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "lightning_bolt",
+        "name": "Lightning Bolt",
+        "layers": [
+            {
+                "id": "bolt",
+                "name": "Bolt",
+                "type": "line",
+                "geometryType": "box",
+                "count": 50,
+                "blending": "additive",
+                "attributeConfig": {
+                    "sizeStart": 1.0,
+                    "sizeEnd": 0.0
+                },
+                "vertexShader": "attribute float size;\nuniform float uTime;\n\nfloat hash(float n) { return fract(sin(n) * 43758.5453123); }\n\nfloat noise(float x) {\n    float i = floor(x);\n    float f = fract(x);\n    return mix(hash(i), hash(i + 1.0), f);\n}\n\nvoid main() {\n    float t = 1.0 - size;\n    vec3 pos = vec3(0.0, t * 2.0, 0.0);\n    \n    if (t > 0.05 && t < 0.95) {\n        float timeStep = floor(uTime * 15.0);\n        float jagged = noise(t * 10.0 + timeStep * 123.0);\n        float jagged2 = noise(t * 20.0 - timeStep * 45.0);\n        float offset = (jagged - 0.5) * 0.5 + (jagged2 - 0.5) * 0.25;\n        pos.x += offset;\n        pos.z += (noise(t * 15.0 + timeStep * 99.0) - 0.5) * 0.5;\n    }\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "void main() {\n    gl_FragColor = vec4(0.7, 0.9, 1.0, 1.0);\n}"
+            },
+            {
+                "id": "glow",
+                "name": "Glow",
+                "type": "points",
+                "geometryType": "box",
+                "count": 40,
+                "blending": "additive",
+                "attributeConfig": {
+                    "sizeStart": 1.0,
+                    "sizeEnd": 0.0
+                },
+                "vertexShader": "attribute float size;\nuniform float uTime;\n\nfloat hash(float n) { return fract(sin(n) * 43758.5453123); }\n\nfloat noise(float x) {\n    float i = floor(x);\n    float f = fract(x);\n    return mix(hash(i), hash(i + 1.0), f);\n}\n\nvoid main() {\n    float t = 1.0 - size;\n    vec3 pos = vec3(0.0, t * 2.0, 0.0);\n    \n    if (t > 0.05 && t < 0.95) {\n        float timeStep = floor(uTime * 15.0);\n        float jagged = noise(t * 10.0 + timeStep * 123.0);\n        float jagged2 = noise(t * 20.0 - timeStep * 45.0);\n        float offset = (jagged - 0.5) * 0.5 + (jagged2 - 0.5) * 0.25;\n        pos.x += offset;\n        pos.z += (noise(t * 15.0 + timeStep * 99.0) - 0.5) * 0.5;\n    }\n    \n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 60.0 + sin(uTime * 50.0) * 20.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "void main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    float dist = length(uv);\n    float glow = 1.0 - smoothstep(0.0, 0.5, dist);\n    glow = pow(glow, 2.0);\n    gl_FragColor = vec4(0.4, 0.6, 1.0, glow * 0.4);\n}"
+            },
+            {
+                "id": "sparks",
+                "name": "Sparks",
+                "type": "points",
+                "geometryType": "sphere",
+                "count": 30,
+                "blending": "additive",
+                "attributeConfig": {
+                    "sizeStart": 1.0,
+                    "sizeEnd": 1.0
+                },
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nattribute vec3 position;\n\nfloat hash(float n) { return fract(sin(n) * 43758.5453123); }\n\nvoid main() {\n    // Use initial sphere position as random seed/direction\n    vec3 dir = normalize(position);\n    float id = angle;\n    \n    // Faster, more frequent sparks\n    float life = mod(uTime * 3.0 + id * 10.0, 1.0);\n    \n    // Start position (random height on bolt)\n    float startH = hash(id * 12.34) * 1.8 + 0.1;\n    vec3 startPos = vec3(0.0, startH, 0.0);\n    \n    // Explode outward in random direction\n    float speed = 1.5 + hash(id * 99.9);\n    vec3 pos = startPos + dir * speed * life * 0.3;\n    \n    // Gravity\n    pos.y -= 3.0 * life * life;\n    \n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = (1.0 - life) * 8.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "void main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    float dist = length(uv);\n    if (dist > 0.5) discard;\n    gl_FragColor = vec4(1.0, 0.9, 0.5, 1.0);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "loot_beam",
+        "name": "Loot Beam",
+        "layers": [
+            {
+                "id": "beam",
+                "name": "Beam",
+                "type": "mesh",
+                "geometryType": "box",
+                "count": 1,
+                "blending": "additive",
+                "vertexShader": "varying vec2 vUv;\nvoid main() {\n    vUv = uv;\n    vec3 pos = position;\n    pos.x *= 0.2; pos.z *= 0.2; pos.y *= 5.0; // Tall thin box\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "varying vec2 vUv;\nuniform float uTime;\nvoid main() {\n    float glow = 1.0 - abs(vUv.x - 0.5) * 2.0;\n    float pulse = sin(uTime * 3.0) * 0.2 + 0.8;\n    gl_FragColor = vec4(1.0, 0.8, 0.2, glow * pulse * 0.5);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "level_up",
+        "name": "Level Up",
+        "layers": [
+            {
+                "id": "burst",
+                "name": "Burst",
+                "type": "points",
+                "geometryType": "sphere",
+                "count": 100,
+                "blending": "additive",
+                "vertexShader": "attribute float angle;\nuniform float uTime;\nvarying float vAlpha;\nvoid main() {\n    float t = mod(uTime, 2.0);\n    vec3 pos = position * t * 3.0;\n    vAlpha = 1.0 - t;\n    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);\n    gl_PointSize = 10.0;\n    gl_Position = projectionMatrix * mvPosition;\n}",
+                "fragmentShader": "varying float vAlpha;\nvoid main() {\n    vec2 uv = gl_PointCoord - 0.5;\n    float dist = length(uv);\n    if (dist > 0.5) discard;\n    gl_FragColor = vec4(1.0, 0.9, 0.2, vAlpha);\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "id": "magic_circle",
+        "name": "Magic Circle",
+        "layers": [
+            {
+                "id": "runes",
+                "name": "Runes",
+                "type": "mesh",
+                "geometryType": "ring",
+                "count": 1,
+                "blending": "additive",
+                "vertexShader": "varying vec2 vUv;\nuniform float uTime;\nvoid main() {\n    vUv = uv;\n    vec3 pos = position;\n    // Rotate\n    float rot = uTime * 0.5;\n    float c = cos(rot); float s = sin(rot);\n    float x = pos.x * c - pos.z * s;\n    float z = pos.x * s + pos.z * c;\n    pos.x = x; pos.z = z;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);\n}",
+                "fragmentShader": "varying vec2 vUv;\nvoid main() {\n    // Procedural pattern\n    float angle = atan(vUv.y - 0.5, vUv.x - 0.5);\n    float pattern = sin(angle * 8.0);\n    float ring = smoothstep(0.4, 0.45, length(vUv - 0.5)) * smoothstep(0.5, 0.45, length(vUv - 0.5));\n    gl_FragColor = vec4(0.8, 0.2, 1.0, ring * (pattern * 0.5 + 0.5));\n}"
+            }
+        ],
+        "uniforms": [
+            {
+                "name": "uTime",
+                "type": "float",
+                "value": 0
+            }
+        ]
+    }
+]

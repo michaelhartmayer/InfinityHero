@@ -13,6 +13,7 @@ import { SpriteDatabase } from './managers/SpriteDatabase.js';
 import { MapLoader } from './utils/MapLoader.js';
 import { SwatchLoader } from './utils/SwatchLoader.js';
 import { ClassDatabase } from './managers/ClassDatabase.js';
+import { EffectDatabase } from './managers/EffectDatabase.js';
 
 const app = express();
 app.use(cors());
@@ -81,6 +82,22 @@ app.post('/api/classes', (req, res) => {
 app.delete('/api/classes/:id', (req, res) => {
     const { id } = req.params;
     classDatabase.deleteTemplate(id);
+    res.json({ success: true });
+});
+
+app.get('/api/effects', (req, res) => {
+    res.json(effectDatabase.getAllTemplates());
+});
+
+app.post('/api/effects', (req, res) => {
+    const template = req.body;
+    effectDatabase.updateTemplate(template);
+    res.json({ success: true });
+});
+
+app.delete('/api/effects/:id', (req, res) => {
+    const { id } = req.params;
+    effectDatabase.deleteTemplate(id);
     res.json({ success: true });
 });
 
@@ -282,6 +299,7 @@ const entityManager = new EntityManager(classDatabase);
 const monsterDatabase = new MonsterDatabase();
 const skillDatabase = new SkillDatabase();
 const spriteDatabase = new SpriteDatabase();
+const effectDatabase = new EffectDatabase();
 console.log('Initialized Class Database');
 const gameLoop = new GameLoop(io, entityManager, worldManager);
 

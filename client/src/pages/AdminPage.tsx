@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import { Routes, Route, NavLink, useNavigate, useParams, Navigate } from 'react-router-dom';
 import IconSelector from '../components/IconSelector';
 
@@ -47,6 +48,8 @@ interface Class {
     baseEnergy: number;
     startingSkills: string[];
 }
+
+
 
 interface MapData {
     id: string;
@@ -1885,13 +1888,11 @@ const ClassForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [editing, setEditing] = useState<Class | null>(null);
-    const [sprites, setSprites] = useState<Sprite[]>([]);
     const [skills, setSkills] = useState<Skill[]>([]);
     const isNew = !id;
 
     useEffect(() => {
         // Fetch dependencies
-        fetch('http://localhost:3000/api/sprites').then(r => r.json()).then(setSprites);
         fetch('http://localhost:3000/api/skills').then(r => r.json()).then(setSkills);
 
         if (!isNew && id) {
@@ -2010,6 +2011,802 @@ const ClassEditor = () => {
     );
 };
 
+
+interface EffectLayer {
+    id: string;
+    name: string;
+    type: 'points' | 'line' | 'mesh';
+    geometryType: 'box' | 'sphere' | 'ring';
+    vertexShader: string;
+    fragmentShader: string;
+    count: number;
+    blending: string;
+    attributeConfig?: {
+        sizeStart?: number;
+        sizeEnd?: number;
+        kindPattern?: string;
+    };
+}
+
+interface EffectUniform {
+    name: string;
+    type: 'float' | 'vec2' | 'vec3' | 'color';
+    value: any;
+    min?: number;
+    max?: number;
+}
+
+interface Effect {
+    id: string;
+    name: string;
+    layers: EffectLayer[];
+    uniforms: EffectUniform[];
+}
+
+const EffectPreview = ({ effect }: { effect: Effect }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [error, setError] = useState<string | null>(null);
+    const sceneRef = useRef<THREE.Scene | null>(null);
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const materialsRef = useRef<THREE.ShaderMaterial[]>([]);
+    const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+
+        const scene = new THREE.Scene();
+        sceneRef.current = scene;
+
+        let camera: THREE.Camera;
+        if (viewMode === '3d') {
+            const pCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            pCamera.position.z = 2;
+            pCamera.position.y = 1;
+            pCamera.lookAt(0, 0, 0);
+            camera = pCamera;
+        } else {
+            const aspect = width / height;
+            const frustumSize = 5;
+            const oCamera = new THREE.OrthographicCamera(
+                frustumSize * aspect / -2,
+                frustumSize * aspect / 2,
+                frustumSize / 2,
+                frustumSize / -2,
+                0.1,
+                1000
+            );
+            oCamera.position.set(0, 0, 5); // Top down
+            oCamera.lookAt(0, 0, 0);
+            camera = oCamera;
+        }
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true });
+        renderer.setSize(width, height);
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(renderer.domElement);
+        rendererRef.current = renderer;
+
+        // Grid helper
+        const grid = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+        if (viewMode === '2d') {
+            grid.rotation.x = Math.PI / 2; // Rotate grid for top-down view if needed, or just keep it flat
+        }
+        scene.add(grid);
+
+        materialsRef.current = [];
+        setError(null);
+
+        effect.layers.forEach((layer) => {
+            let geometry: THREE.BufferGeometry;
+            const count = layer.count || 100;
+
+            if (layer.type === 'points' || layer.type === 'line') {
+                geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const sizes = new Float32Array(count);
+                const colors = new Float32Array(count * 3);
+                const alphas = new Float32Array(count);
+                const kinds = new Float32Array(count);
+                const angles = new Float32Array(count);
+
+                const kindPattern = layer.attributeConfig?.kindPattern
+                    ? layer.attributeConfig.kindPattern.split(',').map(Number)
+                    : [0, 1, 2];
+
+                for (let i = 0; i < count; i++) {
+                    const t = i / (count - 1 || 1);
+
+                    if (layer.geometryType === 'ring') {
+                        const angle = t * Math.PI * 2;
+                        const r = 1.0;
+                        positions[i * 3] = Math.cos(angle) * r;
+                        positions[i * 3 + 1] = 0;
+                        positions[i * 3 + 2] = Math.sin(angle) * r;
+                        angles[i] = angle;
+                    } else if (layer.geometryType === 'sphere') {
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+                        const r = 1.0;
+                        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                        positions[i * 3 + 2] = r * Math.cos(phi);
+                        angles[i] = theta;
+                    } else {
+                        // Box (default)
+                        positions[i * 3] = (Math.random() - 0.5) * 2;
+                        positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+                        positions[i * 3 + 2] = (Math.random() - 0.5) * 2;
+                        angles[i] = 0;
+                    }
+
+                    // Size gradient
+                    const startSize = layer.attributeConfig?.sizeStart ?? 1.0;
+                    const endSize = layer.attributeConfig?.sizeEnd ?? 0.0;
+                    sizes[i] = startSize * (1 - t) + endSize * t;
+
+                    colors[i * 3] = 1;
+                    colors[i * 3 + 1] = 1;
+                    colors[i * 3 + 2] = 1;
+                    alphas[i] = 1;
+
+                    // Kind pattern
+                    kinds[i] = kindPattern[i % kindPattern.length];
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+                geometry.setAttribute('kind', new THREE.BufferAttribute(kinds, 1));
+                geometry.setAttribute('angle', new THREE.BufferAttribute(angles, 1));
+            } else {
+                geometry = new THREE.BoxGeometry(1, 1, 1);
+            }
+
+            // Prepare uniforms
+            const uniforms: any = {
+                uTime: { value: 0 },
+            };
+            effect.uniforms.forEach(u => {
+                if (u.type === 'color') {
+                    uniforms[u.name] = { value: new THREE.Color(u.value) };
+                } else if (u.type === 'vec2') {
+                    uniforms[u.name] = { value: new THREE.Vector2(u.value[0], u.value[1]) };
+                } else if (u.type === 'vec3') {
+                    uniforms[u.name] = { value: new THREE.Vector3(u.value[0], u.value[1], u.value[2]) };
+                } else {
+                    uniforms[u.name] = { value: u.value };
+                }
+            });
+
+            let material: THREE.ShaderMaterial;
+            try {
+                material = new THREE.ShaderMaterial({
+                    uniforms,
+                    vertexShader: layer.vertexShader,
+                    fragmentShader: layer.fragmentShader,
+                    transparent: true,
+                    blending: layer.blending === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+            } catch (e: any) {
+                console.error(e);
+                setError(e.message);
+                material = new THREE.ShaderMaterial({
+                    vertexShader: `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+                    fragmentShader: `void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }`
+                });
+            }
+            materialsRef.current.push(material);
+
+            let mesh: THREE.Object3D;
+            if (layer.type === 'points') {
+                mesh = new THREE.Points(geometry, material);
+            } else if (layer.type === 'line') {
+                mesh = new THREE.Line(geometry, material);
+            } else {
+                mesh = new THREE.Mesh(geometry, material);
+            }
+            scene.add(mesh);
+        });
+
+        const startTime = Date.now();
+        let animationId: number;
+
+        const animate = () => {
+            animationId = requestAnimationFrame(animate);
+            const elapsed = (Date.now() - startTime) / 1000;
+
+            materialsRef.current.forEach(mat => {
+                if (mat.uniforms.uTime) {
+                    mat.uniforms.uTime.value = elapsed;
+                }
+                // Update other uniforms if needed (though React state updates trigger re-render of this component)
+            });
+
+            // Simple camera orbit
+            // camera.position.x = Math.sin(elapsed * 0.2) * 2;
+            // camera.position.z = Math.cos(elapsed * 0.2) * 2;
+            // camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        return () => {
+            cancelAnimationFrame(animationId);
+            renderer.dispose();
+            // Dispose geometries and materials
+        };
+    }, [effect, viewMode]);
+
+    return (
+        <div style={{ width: '100%', height: '400px', background: '#000', borderRadius: '8px', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
+                <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+                    onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
+                >
+                    {viewMode === '3d' ? 'Switch to 2D' : 'Switch to 3D'}
+                </button>
+            </div>
+            <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            {error && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(255,0,0,0.8)', color: 'white', padding: '10px', fontSize: '0.8rem' }}>{error}</div>}
+        </div>
+    );
+};
+
+const MiniEffectPreview = ({ effect }: { effect: Effect }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const sceneRef = useRef<THREE.Scene | null>(null);
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const materialsRef = useRef<THREE.ShaderMaterial[]>([]);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+
+        const scene = new THREE.Scene();
+        sceneRef.current = scene;
+        // Top-down view for mini preview
+        const aspect = width / height;
+        const frustumSize = 4;
+        const camera = new THREE.OrthographicCamera(
+            frustumSize * aspect / -2,
+            frustumSize * aspect / 2,
+            frustumSize / 2,
+            frustumSize / -2,
+            0.1,
+            1000
+        );
+        camera.position.set(0, 0, 5);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(width, height);
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(renderer.domElement);
+        rendererRef.current = renderer;
+
+        materialsRef.current = [];
+
+        effect.layers.forEach((layer) => {
+            let geometry: THREE.BufferGeometry;
+            // Reduce count for mini preview performance
+            const count = Math.min(layer.count || 50, 50);
+
+            if (layer.type === 'points' || layer.type === 'line') {
+                geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const sizes = new Float32Array(count);
+                const colors = new Float32Array(count * 3);
+                const alphas = new Float32Array(count);
+                const kinds = new Float32Array(count);
+                const angles = new Float32Array(count);
+
+                const kindPattern = layer.attributeConfig?.kindPattern
+                    ? layer.attributeConfig.kindPattern.split(',').map(Number)
+                    : [0, 1, 2];
+
+                for (let i = 0; i < count; i++) {
+                    const t = i / (count - 1 || 1);
+
+                    if (layer.geometryType === 'ring') {
+                        const angle = t * Math.PI * 2;
+                        const r = 1.0;
+                        positions[i * 3] = Math.cos(angle) * r;
+                        positions[i * 3 + 1] = 0;
+                        positions[i * 3 + 2] = Math.sin(angle) * r;
+                        angles[i] = angle;
+                    } else if (layer.geometryType === 'sphere') {
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+                        const r = 1.0;
+                        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                        positions[i * 3 + 2] = r * Math.cos(phi);
+                        angles[i] = theta;
+                    } else {
+                        positions[i * 3] = (Math.random() - 0.5) * 2;
+                        positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+                        positions[i * 3 + 2] = (Math.random() - 0.5) * 2;
+                        angles[i] = 0;
+                    }
+
+                    const startSize = layer.attributeConfig?.sizeStart ?? 1.0;
+                    const endSize = layer.attributeConfig?.sizeEnd ?? 0.0;
+                    sizes[i] = startSize * (1 - t) + endSize * t;
+
+                    colors[i * 3] = 1;
+                    colors[i * 3 + 1] = 1;
+                    colors[i * 3 + 2] = 1;
+                    alphas[i] = 1;
+                    kinds[i] = kindPattern[i % kindPattern.length];
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+                geometry.setAttribute('kind', new THREE.BufferAttribute(kinds, 1));
+                geometry.setAttribute('angle', new THREE.BufferAttribute(angles, 1));
+            } else {
+                geometry = new THREE.BoxGeometry(1, 1, 1);
+            }
+
+            const uniforms: any = {
+                uTime: { value: 0 },
+            };
+            effect.uniforms.forEach(u => {
+                if (u.type === 'color') {
+                    uniforms[u.name] = { value: new THREE.Color(u.value) };
+                } else if (u.type === 'vec2') {
+                    uniforms[u.name] = { value: new THREE.Vector2(u.value[0], u.value[1]) };
+                } else if (u.type === 'vec3') {
+                    uniforms[u.name] = { value: new THREE.Vector3(u.value[0], u.value[1], u.value[2]) };
+                } else {
+                    uniforms[u.name] = { value: u.value };
+                }
+            });
+
+            let material: THREE.ShaderMaterial;
+            try {
+                material = new THREE.ShaderMaterial({
+                    uniforms,
+                    vertexShader: layer.vertexShader,
+                    fragmentShader: layer.fragmentShader,
+                    transparent: true,
+                    blending: layer.blending === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+            } catch (e) {
+                material = new THREE.ShaderMaterial({
+                    vertexShader: `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+                    fragmentShader: `void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }`
+                });
+            }
+            materialsRef.current.push(material);
+
+            let mesh: THREE.Object3D;
+            if (layer.type === 'points') {
+                mesh = new THREE.Points(geometry, material);
+            } else if (layer.type === 'line') {
+                mesh = new THREE.Line(geometry, material);
+            } else {
+                mesh = new THREE.Mesh(geometry, material);
+            }
+            scene.add(mesh);
+        });
+
+        const startTime = Date.now();
+        let animationId: number;
+
+        const animate = () => {
+            animationId = requestAnimationFrame(animate);
+            const elapsed = (Date.now() - startTime) / 1000;
+
+            materialsRef.current.forEach(mat => {
+                if (mat.uniforms.uTime) {
+                    mat.uniforms.uTime.value = elapsed;
+                }
+            });
+
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        return () => {
+            cancelAnimationFrame(animationId);
+            renderer.dispose();
+        };
+    }, [effect]);
+
+    return <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#111', borderRadius: '4px' }} />;
+};
+
+const EffectList = () => {
+    const [effects, setEffects] = useState<Effect[]>([]);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchEffects();
+    }, []);
+
+    const fetchEffects = async () => {
+        const res = await fetch('http://localhost:3000/api/effects');
+        const data = await res.json();
+        setEffects(data);
+    };
+
+    return (
+        <div>
+            <div className="editor-header">
+                <h2 className="editor-title">Effects Database</h2>
+                <button className="btn btn-primary" onClick={() => navigate('new')}>+ New Effect</button>
+            </div>
+            <div className="card-grid">
+                {effects.map(e => (
+                    <div key={e.id} className="card" onClick={() => navigate(e.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ height: '120px', width: '100%' }}>
+                            <MiniEffectPreview effect={e} />
+                        </div>
+                        <div>
+                            <h3>{e.name}</h3>
+                            <p>Layers: {e.layers?.length || 0}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const EffectForm = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [editing, setEditing] = useState<Effect | null>(null);
+    const [activeLayerIndex, setActiveLayerIndex] = useState<number>(0);
+    const [activeTab, setActiveTab] = useState<'vertex' | 'fragment'>('vertex');
+    const isNew = !id;
+
+    useEffect(() => {
+        if (!isNew && id) {
+            fetch('http://localhost:3000/api/effects')
+                .then(res => res.json())
+                .then((all: Effect[]) => {
+                    const found = all.find(e => e.id === id);
+                    if (found) {
+                        // Migration check
+                        if (!found.layers) {
+                            found.layers = [{
+                                id: 'default',
+                                name: 'Base Layer',
+                                type: 'points',
+                                geometryType: 'box',
+                                vertexShader: (found as any).vertexShader || '',
+                                fragmentShader: (found as any).fragmentShader || '',
+                                count: (found as any).config?.particleCount || 100,
+                                blending: 'additive'
+                            }];
+                            found.uniforms = [];
+                        }
+                        setEditing(found);
+                    }
+                });
+        } else {
+            setEditing({
+                id: '',
+                name: '',
+                layers: [{
+                    id: 'layer_1',
+                    name: 'Particles',
+                    type: 'points',
+                    geometryType: 'box',
+                    count: 100,
+                    blending: 'additive',
+                    attributeConfig: {
+                        sizeStart: 1.0,
+                        sizeEnd: 0.0,
+                        kindPattern: '0,1,2'
+                    },
+                    vertexShader: `
+attribute float size;
+attribute vec3 color;
+attribute float alpha;
+varying vec3 vColor;
+varying float vAlpha;
+uniform float uTime;
+
+void main() {
+    vColor = color;
+    vAlpha = alpha;
+    vec3 pos = position;
+    // Simple movement
+    pos.y += sin(uTime + position.x * 10.0) * 0.2;
+    
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    gl_PointSize = size * 100.0 / -mvPosition.z;
+    gl_Position = projectionMatrix * mvPosition;
+}
+                    `.trim(),
+                    fragmentShader: `
+uniform float uTime;
+varying vec3 vColor;
+varying float vAlpha;
+
+void main() {
+    float dist = length(gl_PointCoord - 0.5);
+    if (dist > 0.5) discard;
+    gl_FragColor = vec4(vColor, vAlpha);
+}
+                    `.trim()
+                }],
+                uniforms: [
+                    { name: 'uSpeed', type: 'float', value: 1.0, min: 0, max: 5 }
+                ]
+            });
+        }
+    }, [id, isNew]);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editing) return;
+
+        await fetch('http://localhost:3000/api/effects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editing)
+        });
+
+        navigate('..');
+    };
+
+    const handleDelete = async () => {
+        if (!editing || !confirm('Are you sure you want to delete this effect?')) return;
+        await fetch(`http://localhost:3000/api/effects/${editing.id}`, { method: 'DELETE' });
+        navigate('..');
+    };
+
+    const addLayer = () => {
+        if (!editing) return;
+        const newLayer: EffectLayer = {
+            id: `layer_${Date.now()}`,
+            name: 'New Layer',
+            type: 'points',
+            geometryType: 'box',
+            count: 100,
+            blending: 'additive',
+            attributeConfig: {
+                sizeStart: 1.0,
+                sizeEnd: 0.0,
+                kindPattern: '0,1,2'
+            },
+            vertexShader: 'void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = 10.0; }',
+            fragmentShader: 'void main() { gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }'
+        };
+        setEditing({ ...editing, layers: [...editing.layers, newLayer] });
+        setActiveLayerIndex(editing.layers.length);
+    };
+
+    const removeLayer = (index: number) => {
+        if (!editing || editing.layers.length <= 1) return;
+        const newLayers = [...editing.layers];
+        newLayers.splice(index, 1);
+        setEditing({ ...editing, layers: newLayers });
+        setActiveLayerIndex(Math.max(0, index - 1));
+    };
+
+    const updateLayer = (index: number, updates: Partial<EffectLayer>) => {
+        if (!editing) return;
+        const newLayers = [...editing.layers];
+        newLayers[index] = { ...newLayers[index], ...updates };
+        setEditing({ ...editing, layers: newLayers });
+    };
+
+    const addUniform = () => {
+        if (!editing) return;
+        const newUniform: EffectUniform = { name: 'uNew', type: 'float', value: 0.5, min: 0, max: 1 };
+        setEditing({ ...editing, uniforms: [...editing.uniforms, newUniform] });
+    };
+
+    const updateUniform = (index: number, updates: Partial<EffectUniform>) => {
+        if (!editing) return;
+        const newUniforms = [...editing.uniforms];
+        newUniforms[index] = { ...newUniforms[index], ...updates };
+        setEditing({ ...editing, uniforms: newUniforms });
+    };
+
+    const removeUniform = (index: number) => {
+        if (!editing) return;
+        const newUniforms = [...editing.uniforms];
+        newUniforms.splice(index, 1);
+        setEditing({ ...editing, uniforms: newUniforms });
+    };
+
+    if (!editing) return <div>Loading...</div>;
+
+    const activeLayer = editing.layers[activeLayerIndex];
+
+    return (
+        <div className="form-container" style={{ maxWidth: '1400px', display: 'grid', gridTemplateColumns: '350px 1fr 400px', gap: '20px', height: '90vh' }}>
+            {/* Left Column: Configuration */}
+            <div style={{ overflowY: 'auto', paddingRight: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h2>{isNew ? 'Create' : 'Edit'}</h2>
+                    <button className="btn btn-secondary" onClick={() => navigate('..')}>Back</button>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">ID</label>
+                    <input className="form-input" value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })} disabled={!isNew} required />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input className="form-input" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} required />
+                </div>
+
+                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '20px 0' }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ margin: 0 }}>Uniforms</h3>
+                    <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: '0.8rem' }} onClick={addUniform}>+</button>
+                </div>
+                {editing.uniforms.map((u, idx) => (
+                    <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+                            <input className="form-input" style={{ padding: '5px' }} value={u.name} onChange={e => updateUniform(idx, { name: e.target.value })} />
+                            <select className="form-select" style={{ padding: '5px', width: '80px' }} value={u.type} onChange={e => updateUniform(idx, { type: e.target.value as any })}>
+                                <option value="float">Float</option>
+                                <option value="vec2">Vec2</option>
+                                <option value="vec3">Vec3</option>
+                                <option value="color">Color</option>
+                            </select>
+                            <button className="btn btn-danger" style={{ padding: '2px 8px' }} onClick={() => removeUniform(idx)}>x</button>
+                        </div>
+                        {u.type === 'float' && (
+                            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                <input type="range" min={u.min || 0} max={u.max || 1} step={0.01} value={u.value} onChange={e => updateUniform(idx, { value: parseFloat(e.target.value) })} style={{ flex: 1 }} />
+                                <span style={{ fontSize: '0.8rem', width: '40px' }}>{u.value.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {u.type === 'color' && (
+                            <input type="color" value={u.value} onChange={e => updateUniform(idx, { value: e.target.value })} style={{ width: '100%' }} />
+                        )}
+                    </div>
+                ))}
+
+                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '20px 0' }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ margin: 0 }}>Layers</h3>
+                    <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: '0.8rem' }} onClick={addLayer}>+</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {editing.layers.map((layer, idx) => (
+                        <div
+                            key={layer.id}
+                            onClick={() => setActiveLayerIndex(idx)}
+                            style={{
+                                padding: '10px',
+                                borderRadius: '8px',
+                                background: activeLayerIndex === idx ? 'rgba(51, 51, 255, 0.2)' : 'rgba(0,0,0,0.2)',
+                                border: activeLayerIndex === idx ? '1px solid #3333ff' : '1px solid transparent',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <span>{layer.name}</span>
+                            <button className="btn btn-danger" style={{ padding: '2px 6px', fontSize: '0.7rem' }} onClick={(e) => { e.stopPropagation(); removeLayer(idx); }}>x</button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Middle Column: Shader Editor */}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {activeLayer && (
+                    <>
+                        <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <input className="form-input" value={activeLayer.name} onChange={e => updateLayer(activeLayerIndex, { name: e.target.value })} placeholder="Layer Name" style={{ flex: 1, minWidth: '150px' }} />
+                            <select className="form-select" value={activeLayer.type} onChange={e => updateLayer(activeLayerIndex, { type: e.target.value as any })}>
+                                <option value="points">Points</option>
+                                <option value="line">Line</option>
+                            </select>
+                            <select className="form-select" value={activeLayer.geometryType || 'box'} onChange={e => updateLayer(activeLayerIndex, { geometryType: e.target.value as any })}>
+                                <option value="box">Box</option>
+                                <option value="sphere">Sphere</option>
+                                <option value="ring">Ring</option>
+                            </select>
+                            <input type="number" className="form-input" value={activeLayer.count} onChange={e => updateLayer(activeLayerIndex, { count: parseInt(e.target.value) })} placeholder="Count" style={{ width: '80px' }} />
+                        </div>
+
+                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
+                            <h4 style={{ margin: '0 0 5px 0', fontSize: '0.8rem', color: '#aaa' }}>Attribute Config</h4>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ fontSize: '0.7rem', display: 'block' }}>Size Start</label>
+                                    <input type="number" step="0.01" className="form-input" value={activeLayer.attributeConfig?.sizeStart ?? 1.0} onChange={e => updateLayer(activeLayerIndex, { attributeConfig: { ...activeLayer.attributeConfig!, sizeStart: parseFloat(e.target.value) } })} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ fontSize: '0.7rem', display: 'block' }}>Size End</label>
+                                    <input type="number" step="0.01" className="form-input" value={activeLayer.attributeConfig?.sizeEnd ?? 0.0} onChange={e => updateLayer(activeLayerIndex, { attributeConfig: { ...activeLayer.attributeConfig!, sizeEnd: parseFloat(e.target.value) } })} />
+                                </div>
+                                <div style={{ flex: 2 }}>
+                                    <label style={{ fontSize: '0.7rem', display: 'block' }}>Kind Pattern (csv)</label>
+                                    <input className="form-input" value={activeLayer.attributeConfig?.kindPattern ?? '0,1,2'} onChange={e => updateLayer(activeLayerIndex, { attributeConfig: { ...activeLayer.attributeConfig!, kindPattern: e.target.value } })} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', marginBottom: '0' }}>
+                            <button
+                                className={`btn ${activeTab === 'vertex' ? 'btn-primary' : 'btn-secondary'}`}
+                                style={{ borderRadius: '8px 8px 0 0', marginRight: '2px' }}
+                                onClick={() => setActiveTab('vertex')}
+                            >
+                                Vertex Shader
+                            </button>
+                            <button
+                                className={`btn ${activeTab === 'fragment' ? 'btn-primary' : 'btn-secondary'}`}
+                                style={{ borderRadius: '8px 8px 0 0' }}
+                                onClick={() => setActiveTab('fragment')}
+                            >
+                                Fragment Shader
+                            </button>
+                        </div>
+                        <textarea
+                            className="form-textarea"
+                            style={{
+                                flex: 1,
+                                fontFamily: 'monospace',
+                                fontSize: '0.9rem',
+                                borderRadius: '0 8px 8px 8px',
+                                resize: 'none',
+                                whiteSpace: 'pre'
+                            }}
+                            value={activeTab === 'vertex' ? activeLayer.vertexShader : activeLayer.fragmentShader}
+                            onChange={e => updateLayer(activeLayerIndex, activeTab === 'vertex' ? { vertexShader: e.target.value } : { fragmentShader: e.target.value })}
+                        />
+                    </>
+                )}
+            </div>
+
+            {/* Right Column: Preview */}
+            <div>
+                <h3 style={{ marginBottom: '20px' }}>Preview</h3>
+                <EffectPreview effect={editing} />
+
+                <div style={{ marginTop: '20px' }}>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }} onClick={handleSave}>Save Effect</button>
+                    {!isNew && <button type="button" className="btn btn-danger" style={{ width: '100%', marginTop: '10px' }} onClick={handleDelete}>Delete</button>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const EffectEditor = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<EffectList />} />
+            <Route path="new" element={<EffectForm />} />
+            <Route path=":id" element={<EffectForm />} />
+        </Routes>
+    );
+};
+
 export function AdminPage() {
     useEffect(() => {
         const styleSheet = document.createElement("style");
@@ -2065,6 +2862,13 @@ export function AdminPage() {
                 >
                     Sprite Editor
                 </NavLink>
+                <NavLink
+                    to="/admin/effects"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    style={{ textDecoration: 'none', color: 'inherit', padding: '15px 20px', display: 'block' }}
+                >
+                    Effects
+                </NavLink>
             </div>
             <div style={{ flex: 1, overflow: 'hidden', padding: '20px' }}>
                 <Routes>
@@ -2074,6 +2878,7 @@ export function AdminPage() {
                     <Route path="maps/*" element={<MapEditor />} />
                     <Route path="tilesets/*" element={<TilesetEditor />} />
                     <Route path="sprites/*" element={<SpriteEditor />} />
+                    <Route path="effects/*" element={<EffectEditor />} />
                     <Route path="*" element={<Navigate to="monsters" replace />} />
                 </Routes>
             </div>
