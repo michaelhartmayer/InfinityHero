@@ -1,0 +1,9 @@
+{
+    "id": "dev-zombie-animals",
+    "name": "Dev Zombie Animals",
+    "type": "character",
+    "texture": "dev-zombie-animals.png",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "animations": {}
+}

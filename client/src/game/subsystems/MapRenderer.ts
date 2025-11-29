@@ -181,7 +181,7 @@ export class MapRenderer {
             try {
                 const mergedGeometry = mergeFn(geometries);
 
-                const material = new THREE.MeshStandardMaterial({
+                const material = new THREE.MeshBasicMaterial({
                     map: texture,
                     side: THREE.FrontSide,
                     transparent: true,

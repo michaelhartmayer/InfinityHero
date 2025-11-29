@@ -37,6 +37,7 @@ export class TilesetLoader {
             const texture = await this.loadTexture(texturePath);
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
+            texture.colorSpace = THREE.SRGBColorSpace;
             this.textures.set(name, texture);
 
             console.log(`Loaded tileset: ${name}`);

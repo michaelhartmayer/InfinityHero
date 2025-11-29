@@ -93,7 +93,7 @@ export class MonsterRenderer {
                     if (texture) {
                         const geometry = new THREE.PlaneGeometry(1, 1.25);
 
-                        let material: THREE.MeshStandardMaterial;
+                        let material: THREE.MeshBasicMaterial;
                         // We need a unique material per monster to have unique texture offsets
                         // But we can share the texture data (image)
 
@@ -112,7 +112,7 @@ export class MonsterRenderer {
                             clonedTexture.repeat.set(1 / cols, 1 / rows);
                         }
 
-                        material = new THREE.MeshStandardMaterial({
+                        material = new THREE.MeshBasicMaterial({
                             map: clonedTexture,
                             transparent: true,
                             alphaTest: 0.5,
@@ -134,7 +134,7 @@ export class MonsterRenderer {
                             console.warn('⚠️ Texture not found for sprite: ' + monster.sprite + '. Using fallback.');
                         }
                         const geometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-                        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                         mesh = new THREE.Mesh(geometry, material);
                         mesh.userData.isFallback = true;
                         mesh.userData.name = monster.name;
@@ -143,7 +143,7 @@ export class MonsterRenderer {
                 } else {
                     console.warn('⚠️ No sprite ID for monster: ' + monster.name + ' (' + monster.id + ')');
                     const geometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-                    const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                     mesh = new THREE.Mesh(geometry, material);
                     mesh.userData.isFallback = true;
                     mesh.userData.name = monster.name;
@@ -256,7 +256,7 @@ export class MonsterRenderer {
 
                     const geometry = new THREE.PlaneGeometry(1, 1.25);
 
-                    let material: THREE.MeshStandardMaterial;
+                    let material: THREE.MeshBasicMaterial;
 
                     const clonedTexture = texture.clone();
                     clonedTexture.needsUpdate = true;
@@ -272,7 +272,7 @@ export class MonsterRenderer {
                         clonedTexture.repeat.set(1 / cols, 1 / rows);
                     }
 
-                    material = new THREE.MeshStandardMaterial({
+                    material = new THREE.MeshBasicMaterial({
                         map: clonedTexture,
                         transparent: true,
                         alphaTest: 0.5,
@@ -416,7 +416,7 @@ export class MonsterRenderer {
                         const frameIdx = Math.floor(state.animationTime * anim.frameRate) % totalFrames;
                         const frame = anim.frames[frameIdx];
 
-                        const material = mesh.material as THREE.MeshStandardMaterial;
+                        const material = mesh.material as THREE.MeshBasicMaterial;
                         if (material && material.map) {
                             const texture = material.map;
                             const img = texture.image as HTMLImageElement;

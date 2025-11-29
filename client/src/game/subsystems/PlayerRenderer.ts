@@ -59,7 +59,7 @@ export class PlayerRenderer {
 
                     let material = PlayerRenderer.materialCache.get(spriteId);
                     if (!material) {
-                        material = new THREE.MeshStandardMaterial({
+                        material = new THREE.MeshBasicMaterial({
                             map: texture,
                             transparent: true,
                             alphaTest: 0.5,
@@ -85,11 +85,11 @@ export class PlayerRenderer {
                     }
                 } else {
                     const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-                    const material = new THREE.MeshStandardMaterial({ color: 0x9e9e9e });
+                    const material = new THREE.MeshBasicMaterial({ color: 0x9e9e9e });
                     mesh = new THREE.Mesh(geometry, material);
 
                     const headGeo = new THREE.SphereGeometry(0.25, 8, 8);
-                    const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc80 });
+                    const headMat = new THREE.MeshBasicMaterial({ color: 0xffcc80 });
                     const head = new THREE.Mesh(headGeo, headMat);
                     head.position.y = 0.6;
                     mesh.add(head);

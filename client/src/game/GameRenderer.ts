@@ -61,15 +61,15 @@ export class GameRenderer {
         this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio for performance
         this.renderer.setSize(canvas.width, canvas.height);
         this.renderer.shadowMap.enabled = false; // Disable shadows for performance
-        this.renderer.outputEncoding = THREE.LinearEncoding; // Skip sRGB conversion
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Ensure correct sRGB output
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        this.scene.add(ambientLight);
+        // Lighting - Removed for unlit/true-color rendering
+        // const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        // this.scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        dirLight.position.set(5, 10, 7);
-        this.scene.add(dirLight);
+        // const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        // dirLight.position.set(5, 10, 7);
+        // this.scene.add(dirLight);
 
         // Initialize Loaders
         this.spriteLoader = new SpriteLoader();
