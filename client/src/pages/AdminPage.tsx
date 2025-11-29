@@ -99,6 +99,7 @@ interface MapData {
         y: number;
         swatchId: string;
         instanceId: string;
+        tileIdx?: number;
     }>;
 }
 
@@ -938,6 +939,12 @@ const MapEditView = () => {
     const [isPanning, setIsPanning] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [mousePos, setMousePos] = useState<{ x: number, y: number } | null>(null);
+    const dragStartRef = useRef<{
+        origin: { x: number, y: number };
+        size: { w: number, h: number };
+        lastPlaced: { x: number, y: number };
+    } | null>(null);
 
     // Resource Cache
     const [tilesetImages, setTilesetImages] = useState<Record<string, HTMLImageElement>>({});
@@ -1077,36 +1084,110 @@ const MapEditView = () => {
                 const img = tilesetImages[swatch.tileset];
                 if (!img) return;
 
+                // Calculate bounds once
+                let minX = Infinity, minY = Infinity;
                 swatch.tiles.forEach((t: any) => {
-                    let minX = Infinity, minY = Infinity;
-                    swatch.tiles.forEach((st: any) => {
-                        if (st.x < minX) minX = st.x;
-                        if (st.y < minY) minY = st.y;
-                    });
+                    const tx = Number(t.x);
+                    const ty = Number(t.y);
+                    if (tx < minX) minX = tx;
+                    if (ty < minY) minY = ty;
+                });
 
-                    const mapGridSize = 32;
-                    const swatchGridSize = swatch.gridSize || 32;
-                    const scale = mapGridSize / swatchGridSize;
+                const mapGridSize = 32;
+                const swatchGridSize = swatch.gridSize || 32;
+                const scale = mapGridSize / swatchGridSize;
 
-                    const drawX = p.x + (t.x - minX) * scale;
-                    const drawY = p.y + (t.y - minY) * scale;
+                swatch.tiles.forEach((t: any, idx: number) => {
+                    // If tileIdx is specified, only draw that tile
+                    if (p.tileIdx !== undefined && p.tileIdx !== idx) return;
+
+                    const tx = Number(t.x);
+                    const ty = Number(t.y);
+
+                    // If tileIdx is used, p.x/p.y is the position of the tile itself
+                    // If not (legacy), p.x/p.y is the top-left of the swatch
+                    let drawX, drawY;
+
+                    if (p.tileIdx !== undefined) {
+                        drawX = p.x;
+                        drawY = p.y;
+                    } else {
+                        drawX = p.x + (tx - minX) * scale;
+                        drawY = p.y + (ty - minY) * scale;
+                    }
 
                     ctx.drawImage(
                         img,
-                        t.x, t.y, swatchGridSize, swatchGridSize, // Source
+                        tx, ty, swatchGridSize, swatchGridSize, // Source
                         drawX, drawY, mapGridSize, mapGridSize // Destination
                     );
                 });
             });
         }
 
+        // Draw Preview
+        if (selectedSwatch && mousePos) {
+            const gridSize = 32;
+            const gx = Math.floor(mousePos.x / gridSize) * gridSize;
+            const gy = Math.floor(mousePos.y / gridSize) * gridSize;
+
+            const img = tilesetImages[selectedSwatch.tileset];
+            if (img) {
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+
+                // Calculate bounds to normalize
+                let minX = Infinity, minY = Infinity;
+                selectedSwatch.tiles.forEach((t: any) => {
+                    const tx = Number(t.x);
+                    const ty = Number(t.y);
+                    if (tx < minX) minX = tx;
+                    if (ty < minY) minY = ty;
+                });
+
+                const swatchGridSize = selectedSwatch.gridSize || 32;
+                const scale = gridSize / swatchGridSize;
+
+                selectedSwatch.tiles.forEach((t: any) => {
+                    const tx = Number(t.x);
+                    const ty = Number(t.y);
+                    const drawX = gx + (tx - minX) * scale;
+                    const drawY = gy + (ty - minY) * scale;
+
+                    ctx.drawImage(
+                        img,
+                        tx, ty, swatchGridSize, swatchGridSize,
+                        drawX, drawY, gridSize, gridSize
+                    );
+                });
+
+                ctx.restore();
+            }
+        }
+
         ctx.restore();
 
-    }, [mapData, pan, zoom, tilesetImages, tilesetMetadata, swatchSets]);
+    }, [mapData, pan, zoom, tilesetImages, tilesetMetadata, swatchSets, mousePos, selectedSwatch]);
 
     const handleWheel = (e: React.WheelEvent) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Mouse position in world coordinates (relative to pan, scaled by zoom)
+        const worldX = (mouseX - pan.x) / zoom;
+        const worldY = (mouseY - pan.y) / zoom;
+
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        setZoom(z => Math.min(Math.max(z * delta, 0.1), 5));
+        const newZoom = Math.min(Math.max(zoom * delta, 0.1), 5);
+
+        // Calculate new pan to keep mouse at same world coordinates
+        const newPanX = mouseX - worldX * newZoom;
+        const newPanY = mouseY - worldY * newZoom;
+
+        setZoom(newZoom);
+        setPan({ x: newPanX, y: newPanY });
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -1114,12 +1195,49 @@ const MapEditView = () => {
             setIsPanning(true);
             return;
         }
-        if (e.button === 0 && selectedSwatch && mapData) {
+        if (e.button === 0 && selectedSwatch && mapData && containerRef.current) {
+            // Initialize Drag State
+            const rect = containerRef.current.getBoundingClientRect();
+            const x = (e.clientX - rect.left - pan.x) / zoom;
+            const y = (e.clientY - rect.top - pan.y) / zoom;
+            const gridSize = 32;
+            const gx = Math.floor(x / gridSize) * gridSize;
+            const gy = Math.floor(y / gridSize) * gridSize;
+
+            // Calculate Swatch Size
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            selectedSwatch.tiles.forEach((t: any) => {
+                const tx = Number(t.x);
+                const ty = Number(t.y);
+                if (tx < minX) minX = tx;
+                if (tx > maxX) maxX = tx;
+                if (ty < minY) minY = ty;
+                if (ty > maxY) maxY = ty;
+            });
+
+            const swatchGridSize = selectedSwatch.gridSize || 32;
+            const scale = gridSize / swatchGridSize;
+            const width = (maxX - minX + swatchGridSize) * scale;
+            const height = (maxY - minY + swatchGridSize) * scale;
+
+            dragStartRef.current = {
+                origin: { x: gx, y: gy },
+                size: { w: width, h: height },
+                lastPlaced: { x: -Infinity, y: -Infinity } // Initialize to ensure first placement
+            };
+
             placeSwatch(e);
         }
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const x = (e.clientX - rect.left - pan.x) / zoom;
+            const y = (e.clientY - rect.top - pan.y) / zoom;
+            setMousePos({ x, y });
+        }
+
         if (isPanning) {
             setPan(p => ({ x: p.x + e.movementX, y: p.y + e.movementY }));
         } else if (e.buttons === 1 && selectedSwatch) {
@@ -1127,8 +1245,15 @@ const MapEditView = () => {
         }
     };
 
+    const handleMouseLeave = () => {
+        setIsPanning(false);
+        setMousePos(null);
+        dragStartRef.current = null;
+    };
+
     const handleMouseUp = () => {
         setIsPanning(false);
+        dragStartRef.current = null;
     };
 
     const placeSwatch = (e: React.MouseEvent) => {
@@ -1137,26 +1262,134 @@ const MapEditView = () => {
         const rect = containerRef.current.getBoundingClientRect();
         const x = (e.clientX - rect.left - pan.x) / zoom;
         const y = (e.clientY - rect.top - pan.y) / zoom;
-
         const gridSize = 32;
-        const gx = Math.floor(x / gridSize) * gridSize;
-        const gy = Math.floor(y / gridSize) * gridSize;
 
-        const existingIndex = mapData.placedSwatches?.findIndex(p => p.x === gx && p.y === gy);
+        let gx = Math.floor(x / gridSize) * gridSize;
+        let gy = Math.floor(y / gridSize) * gridSize;
 
-        const newPlacement = {
-            x: gx,
-            y: gy,
-            swatchId: selectedSwatch.id,
-            instanceId: Math.random().toString(36).substr(2, 9)
+        // Apply Smart Tiling if dragging
+        if (dragStartRef.current) {
+            const { origin, size, lastPlaced } = dragStartRef.current;
+            const dx = gx - origin.x;
+            const dy = gy - origin.y;
+
+            // Snap to swatch grid
+            gx = origin.x + Math.round(dx / size.w) * size.w;
+            gy = origin.y + Math.round(dy / size.h) * size.h;
+
+            // Prevent placing if we're still at the same snapped location
+            if (gx === lastPlaced.x && gy === lastPlaced.y) {
+                return;
+            }
+
+            // Update last placed position
+            dragStartRef.current.lastPlaced = { x: gx, y: gy };
+        }
+
+        // Helper to get swatch definition
+        const getSwatchDef = (swatchId: string) => {
+            for (const set of swatchSets) {
+                const found = set.swatches.find((s: any) => s.id === swatchId);
+                if (found) return found;
+            }
+            return null;
         };
 
+        // Calculate bounds for selected swatch
+        let minX = Infinity, minY = Infinity;
+        selectedSwatch.tiles.forEach((t: any) => {
+            const tx = Number(t.x);
+            const ty = Number(t.y);
+            if (tx < minX) minX = tx;
+            if (ty < minY) minY = ty;
+        });
+
+        const swatchGridSize = selectedSwatch.gridSize || 32;
+        const scale = gridSize / swatchGridSize;
+
         let newPlacedSwatches = [...(mapData.placedSwatches || [])];
-        if (existingIndex !== undefined && existingIndex >= 0) {
-            newPlacedSwatches[existingIndex] = newPlacement;
-        } else {
-            newPlacedSwatches.push(newPlacement);
-        }
+
+        // Iterate over each tile in the new swatch
+        selectedSwatch.tiles.forEach((tile: any, idx: number) => {
+            const tx = Number(tile.x);
+            const ty = Number(tile.y);
+
+            // Calculate world position for this specific tile
+            const tileX = gx + (tx - minX) * scale;
+            const tileY = gy + (ty - minY) * scale;
+
+            // Create the new placement for this tile
+            const newTilePlacement = {
+                x: tileX,
+                y: tileY,
+                swatchId: selectedSwatch.id,
+                instanceId: Math.random().toString(36).substr(2, 9),
+                tileIdx: idx
+            };
+
+            // Remove/Explode any existing placements at this location
+            newPlacedSwatches = newPlacedSwatches.flatMap(existing => {
+                // Check if existing placement covers this tileX, tileY
+                const existingSwatch = getSwatchDef(existing.swatchId);
+                if (!existingSwatch) return [existing]; // Keep if unknown
+
+                // If existing is a single tile placement (has tileIdx), check exact match
+                if (existing.tileIdx !== undefined) {
+                    if (existing.x === tileX && existing.y === tileY) return []; // Remove it
+                    return [existing]; // Keep it
+                }
+
+                // Legacy/Full swatch placement: check if it overlaps tileX, tileY
+                // Calculate existing bounds
+                let exMinX = Infinity, exMinY = Infinity;
+                existingSwatch.tiles.forEach((t: any) => {
+                    const etx = Number(t.x);
+                    const ety = Number(t.y);
+                    if (etx < exMinX) exMinX = etx;
+                    if (ety < exMinY) exMinY = ety;
+                });
+
+                const exScale = gridSize / (existingSwatch.gridSize || 32);
+                let overlaps = false;
+
+                // Check overlap
+                existingSwatch.tiles.forEach((t: any) => {
+                    const etx = Number(t.x);
+                    const ety = Number(t.y);
+                    const cellX = existing.x + (etx - exMinX) * exScale;
+                    const cellY = existing.y + (ety - exMinY) * exScale;
+                    if (cellX === tileX && cellY === tileY) overlaps = true;
+                });
+
+                if (!overlaps) return [existing]; // No overlap, keep as is
+
+                // Overlap found! Explode existing swatch into individual tiles, excluding the overlapped one
+                const exploded: any[] = [];
+                existingSwatch.tiles.forEach((t: any, eIdx: number) => {
+                    const etx = Number(t.x);
+                    const ety = Number(t.y);
+                    const cellX = existing.x + (etx - exMinX) * exScale;
+                    const cellY = existing.y + (ety - exMinY) * exScale;
+
+                    if (cellX === tileX && cellY === tileY) {
+                        // This is the overlapped tile, do not add it
+                    } else {
+                        // Keep this tile
+                        exploded.push({
+                            x: cellX,
+                            y: cellY,
+                            swatchId: existing.swatchId,
+                            instanceId: Math.random().toString(36).substr(2, 9),
+                            tileIdx: eIdx
+                        });
+                    }
+                });
+                return exploded;
+            });
+
+            // Add the new tile
+            newPlacedSwatches.push(newTilePlacement);
+        });
 
         setMapData({
             ...mapData,
@@ -1238,7 +1471,7 @@ const MapEditView = () => {
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
                 >
                     <canvas
                         ref={canvasRef}
