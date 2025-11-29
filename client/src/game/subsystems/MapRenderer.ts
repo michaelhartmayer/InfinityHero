@@ -13,34 +13,52 @@ export class MapRenderer {
     }
 
     public async loadAssets() {
-        await Promise.all([
-            this.tilesetLoader.loadTileset(
-                'grass',
-                '/assets/tilesets/dev-tileset-grass.json',
-                '/assets/tilesets/dev-tileset-grass.png'
-            ),
-            this.tilesetLoader.loadTileset(
-                'stone',
-                '/assets/tilesets/dev-tileset-stone.json',
-                '/assets/tilesets/dev-tileset-stone.png'
-            )
-        ]);
+        try {
+            // Fetch list of available tilesets
+            const res = await fetch('/api/tilesets');
+            const tilesetIds: string[] = await res.json();
+
+            console.log('📦 Loading tilesets:', tilesetIds);
+
+            await Promise.all(tilesetIds.map(async (id) => {
+                try {
+                    // Fetch metadata to get texture filename
+                    const metaRes = await fetch(`/api/tilesets/${id}`);
+                    const meta = await metaRes.json();
+
+                    await this.tilesetLoader.loadTileset(
+                        id,
+                        `/assets/tilesets/${id}.json`,
+                        `/assets/tilesets/${meta.texture}`
+                    );
+                } catch (err) {
+                    console.error(`Failed to load tileset ${id}:`, err);
+                }
+            }));
+
+        } catch (e) {
+            console.error("Failed to load tileset list:", e);
+            // Fallback for dev/offline
+            await Promise.all([
+                this.tilesetLoader.loadTileset(
+                    'dev-tileset-grass',
+                    '/assets/tilesets/dev-tileset-grass.json',
+                    '/assets/tilesets/dev-tileset-grass.png'
+                ),
+                this.tilesetLoader.loadTileset(
+                    'dev-tileset-stone',
+                    '/assets/tilesets/dev-tileset-stone.json',
+                    '/assets/tilesets/dev-tileset-stone.png'
+                )
+            ]);
+        }
     }
 
     public renderMap(map: WorldMap) {
         this.currentMapData = map;
         this.group.clear();
 
-        const grassTexture = this.tilesetLoader.getTexture('grass');
-        const stoneTexture = this.tilesetLoader.getTexture('stone');
-
-        if (!grassTexture || !stoneTexture) {
-            console.log('⏳ Tilesets loading, using fallback colors...');
-            this.renderMapFallback(map);
-            return;
-        }
-
-        console.log('🎨 Rendering map with textured tilesets');
+        console.log('🎨 Rendering map with dynamic tilesets');
 
         const offsetX = map.width / 2;
         const offsetY = map.height / 2;
@@ -49,22 +67,29 @@ export class MapRenderer {
             for (let y = 0; y < map.height; y++) {
                 const tile = map.tiles[x][y];
 
-                let texture: THREE.Texture;
-                let tilesetName: string;
+                let texture: THREE.Texture | undefined;
+                let tilesetName: string | undefined;
                 let uvs: number[] | null = null;
 
-                if (tile.tileset && tile.textureCoords) {
-                    if (tile.tileset.includes('grass')) {
-                        texture = grassTexture;
-                        tilesetName = 'grass';
-                    } else if (tile.tileset.includes('stone')) {
-                        texture = stoneTexture;
-                        tilesetName = 'stone';
-                    } else {
-                        texture = grassTexture;
-                        tilesetName = 'grass';
-                    }
+                // 1. Try to get texture from tile.tileset
+                if (tile.tileset) {
+                    texture = this.tilesetLoader.getTexture(tile.tileset);
+                    tilesetName = tile.tileset;
 
+                    // Legacy Fallback: 'grass' -> 'dev-tileset-grass'
+                    if (!texture) {
+                        if (tile.tileset === 'grass' || tile.tileset.includes('grass')) {
+                            tilesetName = 'dev-tileset-grass';
+                            texture = this.tilesetLoader.getTexture(tilesetName);
+                        } else if (tile.tileset === 'stone' || tile.tileset.includes('stone')) {
+                            tilesetName = 'dev-tileset-stone';
+                            texture = this.tilesetLoader.getTexture(tilesetName);
+                        }
+                    }
+                }
+
+                // 2. Calculate UVs if we have a texture and coords
+                if (texture && tile.textureCoords && tilesetName) {
                     if (texture.image) {
                         const texWidth = (texture.image as HTMLImageElement).width;
                         const texHeight = (texture.image as HTMLImageElement).height;
@@ -72,7 +97,8 @@ export class MapRenderer {
                         const tY = tile.textureCoords.y;
 
                         let tileSize = tile.tileSize || 32;
-                        if (!tile.tileSize && tilesetName === 'stone') tileSize = 256;
+                        // Legacy hack for stone tileset size if needed, though ideally this should be in tileset data
+                        if (!tile.tileSize && tilesetName.includes('stone')) tileSize = 256;
 
                         const u0 = tX / texWidth;
                         const v1 = 1 - (tY / texHeight);
@@ -86,38 +112,37 @@ export class MapRenderer {
                             u1, v0  // Bottom Right
                         ];
                     }
-
                 } else {
-                    switch (tile.type) {
-                        case TileType.GRASS:
-                        case TileType.FLOOR:
-                            texture = grassTexture;
-                            tilesetName = 'grass';
-                            break;
-                        case TileType.WALL:
-                        case TileType.WATER:
-                            texture = stoneTexture;
-                            tilesetName = 'stone';
-                            break;
-                        default:
-                            texture = grassTexture;
-                            tilesetName = 'grass';
+                    // 3. Fallback / Default Tile Logic
+                    // If no explicit tileset/coords, or texture not found, use defaults based on type
+                    if (!tilesetName || !texture) {
+                        switch (tile.type) {
+                            case TileType.WALL:
+                            case TileType.WATER:
+                                tilesetName = 'dev-tileset-stone';
+                                break;
+                            default:
+                                tilesetName = 'dev-tileset-grass';
+                        }
+                        texture = this.tilesetLoader.getTexture(tilesetName);
                     }
 
-                    const randomTile = this.tilesetLoader.getRandomTile(tilesetName);
-                    if (randomTile) {
-                        uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id) || null;
+                    if (tilesetName && texture) {
+                        const randomTile = this.tilesetLoader.getRandomTile(tilesetName);
+                        if (randomTile) {
+                            uvs = this.tilesetLoader.getTileUVs(tilesetName, randomTile.id) || null;
+                        }
                     }
                 }
 
-                if (!uvs) continue;
+                if (!uvs || !texture) continue;
 
                 const geometry = new THREE.PlaneGeometry(1, 1);
                 const uvAttribute = new THREE.Float32BufferAttribute(uvs, 2);
                 geometry.setAttribute('uv', uvAttribute);
 
                 const material = new THREE.MeshStandardMaterial({
-                    map: texture!,
+                    map: texture,
                     side: THREE.FrontSide,
                     transparent: true,
                     alphaTest: 0.5,
@@ -132,28 +157,7 @@ export class MapRenderer {
         }
     }
 
-    private renderMapFallback(map: WorldMap) {
-        const geometry = new THREE.PlaneGeometry(1, 1);
-        const materials = {
-            [TileType.GRASS]: new THREE.MeshStandardMaterial({ color: 0x4caf50 }),
-            [TileType.WALL]: new THREE.MeshStandardMaterial({ color: 0x607d8b }),
-            [TileType.WATER]: new THREE.MeshStandardMaterial({ color: 0x2196f3 }),
-            [TileType.FLOOR]: new THREE.MeshStandardMaterial({ color: 0x795548 }),
-        };
 
-        const offsetX = map.width / 2;
-        const offsetY = map.height / 2;
-
-        for (let x = 0; x < map.width; x++) {
-            for (let y = 0; y < map.height; y++) {
-                const tile = map.tiles[x][y];
-                const mesh = new THREE.Mesh(geometry, materials[tile.type]);
-                // Invert Y axis
-                mesh.position.set(x - offsetX, (map.height - 1 - y) - offsetY, 0);
-                this.group.add(mesh);
-            }
-        }
-    }
 
     public getTilesetLoader(): TilesetLoader {
         return this.tilesetLoader;

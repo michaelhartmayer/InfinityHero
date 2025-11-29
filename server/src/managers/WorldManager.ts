@@ -86,6 +86,30 @@ export class WorldManager {
                 // Let's assume the texture coordinates relative to the top-left of the bounding box of the swatch tiles
                 // correspond to the spatial coordinates.
 
+                // Check for new single-tile placement format
+                if (placement.tileIdx !== undefined) {
+                    const t = swatch.tiles[placement.tileIdx];
+                    if (!t) continue;
+
+                    const worldX = Math.round(placement.x / 32);
+                    const worldY = Math.round(placement.y / 32);
+
+                    if (worldX >= 0 && worldX < width && worldY >= 0 && worldY < height) {
+                        tiles[worldX][worldY] = {
+                            x: worldX,
+                            y: worldY,
+                            type: TileType.FLOOR,
+                            walkable: swatch.properties.walkable,
+                            tileset: swatch.tileset,
+                            textureCoords: { x: t.x, y: t.y },
+                            color: swatch.color,
+                            tileSize: swatch.gridSize
+                        };
+                    }
+                    continue;
+                }
+
+                // Legacy: Full swatch placement logic
                 // Find bounding box of tiles in texture space
                 let minTx = Infinity, minTy = Infinity;
                 for (const t of swatch.tiles) {
@@ -99,8 +123,8 @@ export class WorldManager {
                     const relX = (t.x - minTx) / swatch.gridSize;
                     const relY = (t.y - minTy) / swatch.gridSize;
 
-                    const worldX = placement.x / 32 + relX; // placement.x is in pixels (32px grid), so divide by 32
-                    const worldY = placement.y / 32 + relY;
+                    const worldX = Math.round(placement.x / 32) + relX;
+                    const worldY = Math.round(placement.y / 32) + relY;
 
                     if (worldX >= 0 && worldX < width && worldY >= 0 && worldY < height) {
                         // Update tile

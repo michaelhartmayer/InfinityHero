@@ -7,6 +7,14 @@
             "range": 1,
             "icon": "👊",
             "target": "target"
+        },
+        {
+            "id": "dev_self_heal",
+            "name": "Self Heal",
+            "description": "Dev: Heal yourself.",
+            "range": 1,
+            "icon": "⛑️",
+            "target": "self"
         }
     ]
 }

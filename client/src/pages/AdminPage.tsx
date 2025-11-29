@@ -1607,13 +1607,13 @@ const TilesetView = () => {
 
     const handleSelect = (name: string) => {
         if (selectedTileset === name) return;
-        navigate(name);
+        navigate(`/admin/tilesets/${name}`);
     };
 
     const handleSwatchClick = async (swatch: any) => {
         // 1. Select the tileset if not already selected
         if (selectedTileset !== swatch.tileset) {
-            navigate(swatch.tileset);
+            navigate(`/admin/tilesets/${swatch.tileset}`);
         }
 
         // 2. Set form data
@@ -2069,6 +2069,7 @@ const TilesetEditor = () => {
         <Routes>
             <Route path="/" element={<TilesetView />} />
             <Route path=":name" element={<TilesetView />} />
+            <Route path="*" element={<Navigate to="." replace />} />
         </Routes>
     );
 };
