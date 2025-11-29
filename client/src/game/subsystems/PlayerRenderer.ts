@@ -22,6 +22,8 @@ export class PlayerRenderer {
     private localPlayerWalkingSound: { source: AudioBufferSourceNode, gainNode: GainNode } | null = null;
     private lastDebugUpdateTime: number = 0;
 
+    private static materialCache: Map<string, THREE.Material> = new Map();
+
     constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, localPlayerId: string | null) {
         this.group = new THREE.Group();
         this.spriteLoader = spriteLoader;
@@ -54,13 +56,20 @@ export class PlayerRenderer {
 
                 if (texture) {
                     const geometry = new THREE.PlaneGeometry(1, 1.25);
-                    const material = new THREE.MeshStandardMaterial({
-                        map: texture,
-                        transparent: true,
-                        alphaTest: 0.5,
-                        side: THREE.DoubleSide
-                    });
+
+                    let material = PlayerRenderer.materialCache.get(spriteId);
+                    if (!material) {
+                        material = new THREE.MeshStandardMaterial({
+                            map: texture,
+                            transparent: true,
+                            alphaTest: 0.5,
+                            side: THREE.DoubleSide
+                        });
+                        PlayerRenderer.materialCache.set(spriteId, material);
+                    }
+
                     mesh = new THREE.Mesh(geometry, material);
+                    mesh.matrixAutoUpdate = false; // Optimization
                     geometry.translate(0, 0.125, 0);
 
                     this.playerStates.set(player.id, {
@@ -123,6 +132,7 @@ export class PlayerRenderer {
 
             if (!this.playerTargets.has(player.id)) {
                 mesh.position.set(targetX, targetY, 0.4);
+                mesh.updateMatrix(); // Manual update
                 this.playerTargets.set(player.id, { x: targetX, y: targetY });
             } else {
                 const currentTarget = this.playerTargets.get(player.id)!;
@@ -133,6 +143,7 @@ export class PlayerRenderer {
 
                 if (dist > 5) {
                     mesh.position.set(targetX, targetY, 0.4);
+                    mesh.updateMatrix(); // Manual update
                     this.playerTargets.set(player.id, { x: targetX, y: targetY });
                 } else {
                     this.playerTargets.set(player.id, { x: targetX, y: targetY });
@@ -268,6 +279,7 @@ export class PlayerRenderer {
             if (target) {
                 mesh.position.x += (target.x - mesh.position.x) * lerpFactor;
                 mesh.position.y += (target.y - mesh.position.y) * lerpFactor;
+                mesh.updateMatrix(); // Manual update
             }
         }
     }

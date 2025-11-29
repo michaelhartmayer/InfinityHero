@@ -25,6 +25,8 @@ export class MonsterRenderer {
     private localPlayerPos: { x: number, y: number } | undefined;
     private activeWalkingSounds: Map<string, { source: AudioBufferSourceNode, gainNode: GainNode }> = new Map();
 
+    private static materialCache: Map<string, THREE.Material> = new Map();
+
     constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, effectRenderer: EffectRenderer) {
         this.group = new THREE.Group();
         this.spriteLoader = spriteLoader;
@@ -90,13 +92,20 @@ export class MonsterRenderer {
                     const texture = this.spriteLoader.getTexture(monster.sprite);
                     if (texture) {
                         const geometry = new THREE.PlaneGeometry(1, 1.25);
-                        const material = new THREE.MeshStandardMaterial({
-                            map: texture,
-                            transparent: true,
-                            alphaTest: 0.5,
-                            side: THREE.DoubleSide
-                        });
+
+                        let material = MonsterRenderer.materialCache.get(monster.sprite);
+                        if (!material) {
+                            material = new THREE.MeshStandardMaterial({
+                                map: texture,
+                                transparent: true,
+                                alphaTest: 0.5,
+                                side: THREE.DoubleSide
+                            });
+                            MonsterRenderer.materialCache.set(monster.sprite, material);
+                        }
+
                         mesh = new THREE.Mesh(geometry, material);
+                        mesh.matrixAutoUpdate = false; // Optimization: Manual matrix update
 
                         const uvs = this.spriteLoader.getFrameUVs(monster.sprite, 1);
                         if (uvs) {
@@ -174,6 +183,7 @@ export class MonsterRenderer {
 
             if (!this.monsterTargets.has(monster.id)) {
                 mesh.position.set(targetX, targetY, 0.3);
+                mesh.updateMatrix(); // Manual update
                 this.monsterTargets.set(monster.id, { x: targetX, y: targetY });
             } else {
                 const currentTarget = this.monsterTargets.get(monster.id)!;
@@ -184,6 +194,7 @@ export class MonsterRenderer {
 
                 if (dist > 5) {
                     mesh.position.set(targetX, targetY, 0.3);
+                    mesh.updateMatrix(); // Manual update
                     this.monsterTargets.set(monster.id, { x: targetX, y: targetY });
                 } else {
                     this.monsterTargets.set(monster.id, { x: targetX, y: targetY });
@@ -224,13 +235,20 @@ export class MonsterRenderer {
                     this.monsterMeshes.delete(id);
 
                     const geometry = new THREE.PlaneGeometry(1, 1.25);
-                    const material = new THREE.MeshStandardMaterial({
-                        map: texture,
-                        transparent: true,
-                        alphaTest: 0.5,
-                        side: THREE.DoubleSide
-                    });
+
+                    let material = MonsterRenderer.materialCache.get(state.spriteId);
+                    if (!material) {
+                        material = new THREE.MeshStandardMaterial({
+                            map: texture,
+                            transparent: true,
+                            alphaTest: 0.5,
+                            side: THREE.DoubleSide
+                        });
+                        MonsterRenderer.materialCache.set(state.spriteId, material);
+                    }
+
                     mesh = new THREE.Mesh(geometry, material);
+                    mesh.matrixAutoUpdate = false; // Optimization
 
                     const shadowGeo = new THREE.PlaneGeometry(1.0, 0.5);
                     const shadowMat = new THREE.MeshBasicMaterial({
@@ -274,6 +292,7 @@ export class MonsterRenderer {
                     mesh.add(label);
 
                     mesh.position.set(state.lastPosition.x, state.lastPosition.y, 0.4);
+                    mesh.updateMatrix(); // Manual update
 
                     const uvs = this.spriteLoader.getFrameUVs(state.spriteId, 10);
                     if (uvs) {
@@ -380,6 +399,7 @@ export class MonsterRenderer {
             if (target) {
                 mesh.position.x += (target.x - mesh.position.x) * lerpFactor;
                 mesh.position.y += (target.y - mesh.position.y) * lerpFactor;
+                mesh.updateMatrix(); // Manual update
             }
         }
     }

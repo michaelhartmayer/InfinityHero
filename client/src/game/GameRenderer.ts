@@ -58,7 +58,10 @@ export class GameRenderer {
             alpha: false, // We have a solid background color
             powerPreference: "high-performance"
         });
+        this.renderer.setPixelRatio(1); // Force 1:1 pixel ratio for performance
         this.renderer.setSize(canvas.width, canvas.height);
+        this.renderer.shadowMap.enabled = false; // Disable shadows for performance
+        this.renderer.outputEncoding = THREE.LinearEncoding; // Skip sRGB conversion
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -92,7 +95,7 @@ export class GameRenderer {
 
         this.loadAssets();
 
-        requestAnimationFrame(this.animate);
+        this.renderer.setAnimationLoop(this.animate);
     }
 
     private async loadAssets() {
@@ -200,8 +203,6 @@ export class GameRenderer {
     }
 
     private animate = (time: number) => {
-        requestAnimationFrame(this.animate);
-
         const dt = Math.min((time - this.lastFrameTime) / 1000, 0.1); // Clamp dt to 100ms
         this.lastFrameTime = time;
 
