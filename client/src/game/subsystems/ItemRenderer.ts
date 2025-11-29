@@ -23,7 +23,7 @@ export class ItemRenderer {
         for (const item of Object.values(items)) {
             if (!this.itemMeshes.has(item.id)) {
                 const geometry = new THREE.SphereGeometry(0.3, 8, 8);
-                const material = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0x444400 });
+                const material = new THREE.MeshBasicMaterial({ color: 0xffd700 });
                 const mesh = new THREE.Mesh(geometry, material);
 
                 mesh.position.set(item.position.x - offsetX, item.position.y - offsetY, 0.3);

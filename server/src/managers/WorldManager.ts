@@ -99,7 +99,7 @@ export class WorldManager {
                             x: worldX,
                             y: worldY,
                             type: TileType.FLOOR,
-                            walkable: swatch.properties.walkable,
+                            walkable: swatch.properties?.walkable ?? true,
                             tileset: swatch.tileset,
                             textureCoords: { x: t.x, y: t.y },
                             color: swatch.color,
@@ -133,7 +133,7 @@ export class WorldManager {
                             y: worldY,
                             type: TileType.FLOOR, // Default to floor for swatches? Or keep underlying type?
                             // Ideally we should have a 'custom' type or override rendering
-                            walkable: swatch.properties.walkable,
+                            walkable: swatch.properties?.walkable ?? true,
                             tileset: swatch.tileset,
                             textureCoords: { x: t.x, y: t.y },
                             color: swatch.color,
