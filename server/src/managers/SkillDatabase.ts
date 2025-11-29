@@ -11,7 +11,7 @@ export interface SkillTemplate {
     description: string;
     range: number;
     icon: string;
-    target: 'target' | 'self' | 'passive';
+    target: 'target' | 'self' | 'passive' | 'auto-target';
     script?: string;
 }
 

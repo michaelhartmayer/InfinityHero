@@ -4,6 +4,7 @@ interface SkillData {
     id: string;
     icon: string;
     name: string;
+    target?: 'target' | 'self' | 'passive' | 'auto-target';
 }
 
 interface BottomBarProps {

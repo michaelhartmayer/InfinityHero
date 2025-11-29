@@ -26,7 +26,7 @@ interface Skill {
     description: string;
     range: number;
     icon: string;
-    target: 'target' | 'self' | 'passive';
+    target: 'target' | 'self' | 'passive' | 'auto-target';
     script?: string;
 }
 
@@ -697,6 +697,7 @@ const SkillForm = () => {
                             <option value="target">Target</option>
                             <option value="self">Self</option>
                             <option value="passive">Passive</option>
+                            <option value="auto-target">Auto-Target</option>
                         </select>
                     </div>
                 </div>

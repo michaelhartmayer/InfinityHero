@@ -642,30 +642,38 @@ io.on('connection', (socket) => {
         socket.on(EVENTS.PLAYER_SET_ACTIVE_SKILL, (skillId: string) => {
             const player = entityManager.getPlayer(socket.id);
             if (player && player.skills.includes(skillId)) {
-                player.activeSkill = skillId;
-
-                // Check if this is a self-cast skill - if so, execute immediately
                 const skillTemplate = skillDatabase.getTemplate(skillId);
-                if (skillTemplate && skillTemplate.target === 'self' && skillTemplate.script) {
-                    // Check cooldown first
-                    if (scriptEngine.isOnCooldown(socket.id, skillId)) {
-                        socket.emit(EVENTS.CHAT_MESSAGE, {
-                            id: Math.random().toString(36).substr(2, 9),
-                            playerId: 'system',
-                            playerName: 'System',
-                            message: `Skill ${skillTemplate.name} is on cooldown!`,
-                            timestamp: Date.now()
-                        });
-                        return;
-                    }
 
-                    // Execute the skill script
-                    scriptEngine.execute(skillTemplate.script, {
-                        self: player,
-                        target: player,
-                        trigger: 'ACTIVATE',
-                        skillId: skillId  // Pass skill ID for cooldown tracking
-                    });
+                if (skillTemplate) {
+                    // Handle based on skill type
+                    if (skillTemplate.target === 'self' || skillTemplate.target === 'passive') {
+                        // Self and passive skills: execute immediately, don't change activeSkill
+                        if (skillTemplate.script) {
+                            // Check cooldown first
+                            if (scriptEngine.isOnCooldown(socket.id, skillId)) {
+                                socket.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: `Skill ${skillTemplate.name} is on cooldown!`,
+                                    timestamp: Date.now()
+                                });
+                                return;
+                            }
+
+                            // Execute the skill script
+                            scriptEngine.execute(skillTemplate.script, {
+                                self: player,
+                                target: player,
+                                trigger: 'ACTIVATE',
+                                skillId: skillId
+                            });
+                        }
+                        // Don't change activeSkill for self/passive
+                    } else {
+                        // Auto-target and target skills: set as active skill
+                        player.activeSkill = skillId;
+                    }
                 }
 
                 // Notify player

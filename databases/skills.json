@@ -6,7 +6,7 @@
             "description": "Basic melee attack",
             "range": 0,
             "icon": "⚔️",
-            "target": "enemy",
+            "target": "auto-target",
             "script": "# Cooldown\nACTIVATE cooldown 1000;\n\n# Attack for 5 base damage\nACTIVATE damage_target 5,$_target;"
         },
         {
