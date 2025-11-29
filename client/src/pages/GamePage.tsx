@@ -241,10 +241,12 @@ export function GamePage() {
 
     const localPlayer = socket?.id ? players[socket.id] : undefined;
 
+    const [isDebugVisible, setIsDebugVisible] = useState(false);
+
     return (
         <div className="App">
             <div className="ui-layer">
-                {socket?.id && <DebugPanel sessionId={socket.id} animationInfo={debugInfo} />}
+                {socket?.id && isDebugVisible && <DebugPanel sessionId={socket.id} animationInfo={debugInfo} />}
                 {socket && mapData && players[socket.id] && (
                     <>
                         <HUD player={players[socket.id]} />
@@ -262,6 +264,7 @@ export function GamePage() {
                                     const newMuted = AudioManager.getInstance().toggleMute();
                                     setIsMuted(newMuted);
                                 }}
+                                onToggleDebug={() => setIsDebugVisible(!isDebugVisible)}
                             />
                         </div>
                     </>

@@ -11,9 +11,10 @@ interface BottomBarProps {
     skills?: string[];
     isMuted?: boolean;
     onToggleMute?: () => void;
+    onToggleDebug?: () => void;
 }
 
-export function BottomBar({ onToggleInventory, skills = [], isMuted = false, onToggleMute }: BottomBarProps) {
+export function BottomBar({ onToggleInventory, skills = [], isMuted = false, onToggleMute, onToggleDebug }: BottomBarProps) {
     const [skillData, setSkillData] = useState<Record<string, SkillData>>({});
 
     useEffect(() => {
@@ -64,6 +65,11 @@ export function BottomBar({ onToggleInventory, skills = [], isMuted = false, onT
                 <button className="menu-btn" title="Settings">
                     ⚙️
                 </button>
+                {onToggleDebug && (
+                    <button className="menu-btn" onClick={onToggleDebug} title="Toggle Debug Info">
+                        🐛
+                    </button>
+                )}
             </div>
         </div>
     );
