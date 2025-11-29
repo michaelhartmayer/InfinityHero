@@ -617,6 +617,26 @@ io.on('connection', (socket) => {
             }
         });
 
+        socket.on(EVENTS.PLAYER_CHANGE_CLASS, (classId: string) => {
+            const success = entityManager.changePlayerClass(socket.id, classId);
+            if (success) {
+                const player = entityManager.getPlayer(socket.id);
+                socket.emit(EVENTS.CHAT_MESSAGE, {
+                    id: Math.random().toString(36).substr(2, 9),
+                    playerId: 'system',
+                    playerName: 'System',
+                    message: `You have changed your class to ${classId}`,
+                    timestamp: Date.now()
+                });
+                // Force state update immediately
+                io.emit(EVENTS.STATE_UPDATE, {
+                    players: entityManager.getAllPlayers(),
+                    items: entityManager.getAllItems(),
+                    monsters: entityManager.getAllMonsters()
+                });
+            }
+        });
+
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
             entityManager.removePlayer(socket.id);

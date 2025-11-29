@@ -82,6 +82,7 @@ export const EVENTS = {
     COMMAND_RESPAWN: 'command_respawn',
     COMMAND_SPAWN: 'command_spawn',
     BROADCAST_MESSAGE: 'broadcast_message',
+    PLAYER_CHANGE_CLASS: 'player_change_class',
 };
 
 export const CONSTANTS = {

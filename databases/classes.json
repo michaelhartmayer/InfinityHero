@@ -8,7 +8,8 @@
             "baseHp": 150,
             "baseEnergy": 50,
             "startingSkills": [
-                "melee"
+                "melee",
+                "dev_self_heal"
             ]
         },
         {

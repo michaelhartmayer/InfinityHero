@@ -310,4 +310,22 @@ export class EntityManager {
     public clearItems() {
         this.items = {};
     }
+
+    public changePlayerClass(playerId: string, classId: string): boolean {
+        const player = this.players[playerId];
+        if (!player) return false;
+
+        const classTemplate = this.classDatabase.getTemplate(classId);
+        if (!classTemplate) return false;
+
+        player.class = classId;
+        player.maxHp = classTemplate.baseHp;
+        player.hp = player.maxHp;
+        player.maxEnergy = classTemplate.baseEnergy;
+        player.energy = player.maxEnergy;
+        player.skills = classTemplate.startingSkills;
+        player.activeSkill = player.skills[0] || 'melee';
+
+        return true;
+    }
 }

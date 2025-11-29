@@ -8,6 +8,7 @@ import { HUD } from '../components/HUD';
 import { BottomBar } from '../components/BottomBar';
 import { BroadcastOverlay } from '../components/BroadcastOverlay';
 import { DebugPanel } from '../components/DebugPanel';
+import { ClassSelector } from '../components/ClassSelector';
 import { AudioManager } from '../game/AudioManager';
 import '../App.css';
 
@@ -242,12 +243,19 @@ export function GamePage() {
     const localPlayer = socket?.id ? players[socket.id] : undefined;
 
     const [isDebugVisible, setIsDebugVisible] = useState(false);
+    const [isClassSelectorOpen, setIsClassSelectorOpen] = useState(false);
+
+    const handleClassSelect = (classId: string) => {
+        if (socket) {
+            socket.emit(EVENTS.PLAYER_CHANGE_CLASS, classId);
+        }
+    };
 
     return (
         <div className="App">
             <div className="ui-layer">
                 {socket?.id && isDebugVisible && <DebugPanel sessionId={socket.id} animationInfo={debugInfo} />}
-                {socket && mapData && players[socket.id] && (
+                {socket && socket.id && mapData && players[socket.id] && (
                     <>
                         <HUD player={players[socket.id]} />
                         <div className="center-ui">
@@ -266,18 +274,28 @@ export function GamePage() {
                                     setIsMuted(newMuted);
                                 }}
                                 onToggleDebug={() => setIsDebugVisible(!isDebugVisible)}
+                                onToggleClassSelector={() => setIsClassSelectorOpen(!isClassSelectorOpen)}
                             />
                         </div>
                     </>
                 )}
 
                 {localPlayer && (
-                    <Inventory
-                        items={localPlayer.inventory || []}
-                        isOpen={isInventoryOpen}
-                        onClose={() => setIsInventoryOpen(false)}
-                        onItemClick={(item) => console.log('Clicked item:', item)}
-                    />
+                    <>
+                        <Inventory
+                            items={localPlayer.inventory || []}
+                            isOpen={isInventoryOpen}
+                            onClose={() => setIsInventoryOpen(false)}
+                            onItemClick={(item) => console.log('Clicked item:', item)}
+                        />
+                        {isClassSelectorOpen && (
+                            <ClassSelector
+                                currentClassId={localPlayer.class}
+                                onSelectClass={handleClassSelect}
+                                onClose={() => setIsClassSelectorOpen(false)}
+                            />
+                        )}
+                    </>
                 )}
             </div>
 
