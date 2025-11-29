@@ -8,6 +8,7 @@ import { HUD } from '../components/HUD';
 import { BottomBar } from '../components/BottomBar';
 import { BroadcastOverlay } from '../components/BroadcastOverlay';
 import { DebugPanel } from '../components/DebugPanel';
+import { AudioManager } from '../game/AudioManager';
 import '../App.css';
 
 export function GamePage() {
@@ -19,6 +20,8 @@ export function GamePage() {
     const [items, setItems] = useState<Record<string, Item>>({});
     const [monsters, setMonsters] = useState<Record<string, Monster>>({});
     const [broadcastMessage, setBroadcastMessage] = useState<BroadcastMessage | null>(null);
+    const [lastAttackEvent, setLastAttackEvent] = useState<{ attackerId: string, targetId: string, damage: number } | null>(null);
+    const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
         // Connect to Socket.IO via Vite proxy (no need to specify port)
@@ -44,8 +47,15 @@ export function GamePage() {
         });
 
         newSocket.on(EVENTS.MAP_DATA, (data: WorldMap) => {
-            console.log('Received map data', data);
+            console.log('Map data received:', data);
             setMapData(data);
+
+            // Handle music
+            if (data.music) {
+                AudioManager.getInstance().playMusic(data.music.url, data.music.volume, data.music.loop);
+            } else {
+                AudioManager.getInstance().stopMusic();
+            }
         });
 
         newSocket.on(EVENTS.STATE_UPDATE, (state: GameState) => {
@@ -64,7 +74,7 @@ export function GamePage() {
 
         newSocket.on(EVENTS.ATTACK, (data: any) => {
             console.log('Attack:', data);
-            // Visual feedback could go here
+            setLastAttackEvent(data);
         });
 
         newSocket.on(EVENTS.PLAYER_DEATH, (data: any) => {
@@ -235,16 +245,26 @@ export function GamePage() {
         <div className="App">
             <div className="ui-layer">
                 {socket?.id && <DebugPanel sessionId={socket.id} animationInfo={debugInfo} />}
-                {localPlayer && <HUD player={localPlayer} />}
+                {socket && mapData && players[socket.id] && (
+                    <>
+                        <HUD
+                            player={players[socket.id]}
+                            isMuted={isMuted}
+                            onToggleMute={() => {
+                                const newMuted = AudioManager.getInstance().toggleMute();
+                                setIsMuted(newMuted);
+                            }}
+                        />
+                        <div className="center-ui">
+                            <BroadcastOverlay message={broadcastMessage} />
+                        </div>
 
-                <div className="center-ui">
-                    <BroadcastOverlay message={broadcastMessage} />
-                </div>
-
-                <div className="bottom-ui">
-                    <ChatWindow messages={messages} onSendMessage={handleSendMessage} isChatMode={isChatMode} onSetChatMode={setIsChatMode} />
-                    <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} skills={localPlayer?.skills} />
-                </div>
+                        <div className="bottom-ui">
+                            <ChatWindow messages={messages} onSendMessage={handleSendMessage} isChatMode={isChatMode} onSetChatMode={setIsChatMode} />
+                            <BottomBar onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)} skills={localPlayer?.skills} />
+                        </div>
+                    </>
+                )}
 
                 {localPlayer && (
                     <Inventory
@@ -264,7 +284,13 @@ export function GamePage() {
                     monsters={monsters}
                     localPlayerId={socket?.id || null}
                     lastMessage={messages.length > 0 ? messages[messages.length - 1] : null}
+                    lastAttackEvent={lastAttackEvent}
                     onMove={handleMove}
+                    onAttack={(targetId) => {
+                        if (socket) {
+                            socket.emit(EVENTS.ATTACK, targetId);
+                        }
+                    }}
                     onDebugUpdate={setDebugInfo}
                 />
             </div>

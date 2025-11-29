@@ -53,6 +53,7 @@ export interface Monster extends Entity {
     movePath: Position[];
     sprite?: string;
     spawnEffect?: string;
+    lastAttackTime?: number;
 }
 
 export interface GameState {
@@ -110,4 +111,9 @@ export interface WorldMap {
     width: number;
     height: number;
     tiles: Tile[][];
+    music?: {
+        url: string;
+        volume?: number;
+        loop?: boolean;
+    };
 }

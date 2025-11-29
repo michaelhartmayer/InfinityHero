@@ -3,6 +3,7 @@ import { CSS2DObject } from 'three-stdlib';
 import { type Player, type WorldMap } from '@vibemaster/shared';
 import { SpriteLoader } from '../SpriteLoader';
 import { AnimationState } from '../AnimationConstants';
+import { AudioManager } from '../AudioManager';
 
 export class PlayerRenderer {
     public group: THREE.Group;
@@ -18,6 +19,7 @@ export class PlayerRenderer {
     private spriteLoader: SpriteLoader;
     private shadowTexture: THREE.Texture;
     private localPlayerId: string | null;
+    private localPlayerWalkingSound: { source: AudioBufferSourceNode, gainNode: GainNode } | null = null;
 
     constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, localPlayerId: string | null) {
         this.group = new THREE.Group();
@@ -183,6 +185,23 @@ export class PlayerRenderer {
             // Lowered to 0.01 to ensure slow movement is detected
             const isMoving = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
             state.isMoving = isMoving;
+
+            // Handle local player walking sound
+            if (id === this.localPlayerId) {
+                if (isMoving && !this.localPlayerWalkingSound) {
+                    // Start looping walking sound
+                    AudioManager.getInstance().playLoopingSFX('/assets/sounds/dev-pc-walking.mp3', 0.5).then(soundNodes => {
+                        if (soundNodes) {
+                            this.localPlayerWalkingSound = soundNodes;
+                        }
+                    });
+                } else if (!isMoving && this.localPlayerWalkingSound) {
+                    // Fade out walking sound
+                    AudioManager.getInstance().fadeOutSound(this.localPlayerWalkingSound.gainNode, 0.25);
+                    this.localPlayerWalkingSound.source.stop(AudioManager.getInstance()['audioContext']!.currentTime + 0.25);
+                    this.localPlayerWalkingSound = null;
+                }
+            }
 
             if (isMoving) {
                 if (Math.abs(dx) > Math.abs(dy)) {

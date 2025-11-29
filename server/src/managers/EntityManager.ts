@@ -115,7 +115,9 @@ export class EntityManager {
             moveTarget: null,
             movePath: [],
             sprite: template.sprite,
-            spawnEffect: template.spawnEffect
+            sprite: template.sprite,
+            spawnEffect: template.spawnEffect,
+            lastAttackTime: 0
         };
 
         this.monsters[id] = monster;
@@ -145,7 +147,9 @@ export class EntityManager {
             moveTarget: null,
             movePath: [],
             sprite: template?.sprite,
-            spawnEffect: template?.spawnEffect
+            sprite: template?.sprite,
+            spawnEffect: template?.spawnEffect,
+            lastAttackTime: 0
         };
         this.monsters[id] = monster;
         return monster;

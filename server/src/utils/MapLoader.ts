@@ -51,11 +51,17 @@ export interface MapData {
         music?: string;
         ambientSound?: string;
     };
+    music?: {
+        url: string;
+        volume?: number;
+        loop?: boolean;
+    };
     placedSwatches?: Array<{
         x: number;
         y: number;
         swatchId: string;
         instanceId: string;
+        tileIdx?: number;
     }>;
 }
 

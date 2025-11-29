@@ -3,6 +3,11 @@
     "name": "Starting Zone",
     "width": 50,
     "height": 50,
+    "music": {
+        "url": "/assets/music/0-it-begins.mp3",
+        "volume": 0.5,
+        "loop": true
+    },
     "description": "A peaceful starting area with grassy fields surrounded by stone walls and a small pond.",
     "spawnPoints": [
         {

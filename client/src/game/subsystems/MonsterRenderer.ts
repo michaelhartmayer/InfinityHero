@@ -3,8 +3,8 @@ import { CSS2DObject } from 'three-stdlib';
 import { type Monster, type WorldMap } from '@vibemaster/shared';
 import { SpriteLoader } from '../SpriteLoader';
 import { AnimationState } from '../AnimationConstants';
-
 import { EffectRenderer } from './EffectRenderer';
+import { AudioManager } from '../AudioManager';
 
 export class MonsterRenderer {
     public group: THREE.Group;
@@ -21,6 +21,9 @@ export class MonsterRenderer {
     private spriteLoader: SpriteLoader;
     private shadowTexture: THREE.Texture;
     private effectRenderer: EffectRenderer;
+    private lastStepTimes: Map<string, number> = new Map();
+    private localPlayerPos: { x: number, y: number } | undefined;
+    private activeWalkingSounds: Map<string, { source: AudioBufferSourceNode, gainNode: GainNode }> = new Map();
 
     constructor(spriteLoader: SpriteLoader, shadowTexture: THREE.Texture, effectRenderer: EffectRenderer) {
         this.group = new THREE.Group();
@@ -29,10 +32,12 @@ export class MonsterRenderer {
         this.effectRenderer = effectRenderer;
     }
 
-    public updateMonsters(monsters: Record<string, Monster>, mapData: WorldMap) {
+    public updateMonsters(monsters: Record<string, Monster>, mapData: WorldMap, localPlayerPos?: { x: number, y: number }) {
         const offsetX = mapData.width / 2;
         const offsetY = mapData.height / 2;
+        this.localPlayerPos = localPlayerPos;
 
+        // Remove despawned monsters
         for (const [id, mesh] of this.monsterMeshes) {
             if (!monsters[id]) {
                 const label = mesh.getObjectByName('nameLabel');
@@ -41,6 +46,7 @@ export class MonsterRenderer {
                 this.monsterMeshes.delete(id);
                 this.monsterTargets.delete(id);
                 this.monsterStates.delete(id);
+                this.lastStepTimes.delete(id);
             }
         }
 
@@ -52,7 +58,6 @@ export class MonsterRenderer {
                 const state = this.monsterStates.get(monster.id);
                 // If sprite changed, remove mesh to force recreation
                 if (state && state.spriteId !== (monster.sprite || '')) {
-                    // Clean up old label if exists (good practice, though clear() handles it too)
                     const label = mesh.getObjectByName('nameLabel');
                     if (label) mesh.remove(label);
 
@@ -79,10 +84,6 @@ export class MonsterRenderer {
                             y: monster.position.y - offsetY
                         });
                     }
-                } else {
-                    // Update spriteId in existing state
-                    const state = this.monsterStates.get(monster.id)!;
-                    state.spriteId = monster.sprite || '';
                 }
 
                 if (monster.sprite) {
@@ -198,6 +199,7 @@ export class MonsterRenderer {
     }
 
     public updateAnimations(dt: number) {
+        const now = Date.now();
         for (const [id, state] of this.monsterStates) {
             let mesh = this.monsterMeshes.get(id);
             if (!mesh) continue;
@@ -296,8 +298,37 @@ export class MonsterRenderer {
                     state.facing = dy > 0 ? 'up' : 'down';
                 }
                 state.animationTime += dt;
+
+                // Play movement sound
+                if (this.localPlayerPos) {
+                    const lastStep = this.lastStepTimes.get(id) || 0;
+                    if (now - lastStep > 400) { // 400ms interval
+                        console.log(`🚶 Monster ${id} is moving, triggering step sound`);
+                        AudioManager.getInstance().playPositionalSFX(
+                            '/assets/sounds/dev-skeleton-short-walk.mp3',
+                            { x: mesh.position.x, y: mesh.position.y },
+                            this.localPlayerPos,
+                            20 // Max distance
+                        ).then(soundNodes => {
+                            if (soundNodes) {
+                                this.activeWalkingSounds.set(id, soundNodes);
+                            }
+                        });
+                        this.lastStepTimes.set(id, now);
+                    }
+                } else {
+                    console.log(`⚠️ Monster ${id} moving but no localPlayerPos`);
+                }
             } else {
                 state.animationTime = 0;
+
+                // Fade out walking sound if it's still playing
+                const activeSound = this.activeWalkingSounds.get(id);
+                if (activeSound) {
+                    console.log(`🔇 Fading out walking sound for ${id}`);
+                    AudioManager.getInstance().fadeOutSound(activeSound.gainNode, 0.5);
+                    this.activeWalkingSounds.delete(id);
+                }
             }
 
             state.lastPosition.x = mesh.position.x;
@@ -317,15 +348,9 @@ export class MonsterRenderer {
                         }
                     }
 
-                    // Robust lookup:
-                    // 1. Exact match (e.g. "WALK_DOWN")
-                    // 2. Uppercase match (e.g. "WALK_DOWN")
-                    // 3. Base action match (e.g. "idle")
-                    // 4. Uppercase base action match (e.g. "IDLE")
                     let anim = sprite.animations[animName] ||
                         sprite.animations[animName.toUpperCase()];
 
-                    // 5. Case-insensitive search for full name
                     if (!anim) {
                         const targetName = animName.toLowerCase();
                         const key = Object.keys(sprite.animations).find(k => k.toLowerCase() === targetName);
@@ -384,5 +409,6 @@ export class MonsterRenderer {
         this.monsterMeshes.clear();
         this.monsterStates.clear();
         this.monsterTargets.clear();
+        this.lastStepTimes.clear();
     }
 }

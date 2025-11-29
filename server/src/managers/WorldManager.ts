@@ -147,7 +147,8 @@ export class WorldManager {
         return {
             width,
             height,
-            tiles
+            tiles,
+            music: mapData.music
         };
     }
 

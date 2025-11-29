@@ -112,9 +112,26 @@ export class GameLoop {
 
                             if (dist < 1.5) {
                                 // Attack!
-                                // For now just simple damage, maybe add cooldown
-                                // We don't have attack cooldown on monster yet, so let's just not spam too much
-                                // Maybe only attack if we didn't move?
+                                if (!monster.lastAttackTime || now - monster.lastAttackTime > 2000) {
+                                    const damage = Math.floor(monster.level * 5); // Simple damage formula
+                                    const isDead = this.entityManager.applyDamage(targetPlayer.id, damage);
+
+                                    this.io.emit(EVENTS.ATTACK, {
+                                        attackerId: monster.id,
+                                        targetId: targetPlayer.id,
+                                        damage
+                                    });
+
+                                    monster.lastAttackTime = now;
+
+                                    if (isDead) {
+                                        this.io.emit(EVENTS.PLAYER_DEATH, { playerId: targetPlayer.id });
+                                        this.entityManager.respawnPlayer(targetPlayer.id);
+                                        // Reset monster aggro
+                                        monster.strategy = MonsterStrategyType.PASSIVE;
+                                        monster.targetId = null;
+                                    }
+                                }
                             }
                         } else {
                             // Target gone

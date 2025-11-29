@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { GameRenderer, CursorState } from '../game/GameRenderer';
+import { AudioManager } from '../game/AudioManager';
 import type { WorldMap, Player, Item, Monster, ChatMessage } from '@vibemaster/shared';
 
 interface GameCanvasProps {
@@ -9,16 +10,19 @@ interface GameCanvasProps {
     monsters: Record<string, Monster>;
     localPlayerId: string | null;
     lastMessage: ChatMessage | null;
+    lastAttackEvent: { attackerId: string, targetId: string, damage: number } | null;
     onMove: (x: number, y: number) => void;
+    onAttack: (targetId: string) => void;
     onDebugUpdate?: (info: string) => void;
 }
 
-export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, onMove, onDebugUpdate }: GameCanvasProps) {
+export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, lastAttackEvent, onMove, onAttack, onDebugUpdate }: GameCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<GameRenderer | null>(null);
     const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
     const lastMonsterPos = useRef<{ x: number, y: number } | null>(null);
     const lastMousePos = useRef<{ x: number, y: number } | null>(null);
+    const lastAttackTime = useRef<number>(0);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -150,6 +154,31 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
         }
     }, [lastMessage]);
 
+    // Track processed attack events to prevent duplicates
+    const lastProcessedAttackRef = useRef<{ attackerId: string, targetId: string, damage: number } | null>(null);
+
+    // Handle attack events
+    useEffect(() => {
+        if (lastAttackEvent && rendererRef.current && lastAttackEvent !== lastProcessedAttackRef.current) {
+            lastProcessedAttackRef.current = lastAttackEvent;
+
+            rendererRef.current.showDamage(lastAttackEvent.targetId, lastAttackEvent.damage, lastAttackEvent.attackerId);
+
+            // Play sound effect
+            if (lastAttackEvent.attackerId) {
+                // Check if attacker is a player (by checking if they are in the players list)
+                // Note: This assumes players list is available in scope (it is passed as prop)
+                const isPlayer = players[lastAttackEvent.attackerId] !== undefined;
+
+                if (isPlayer) {
+                    AudioManager.getInstance().playSFX('/assets/sounds/dev-pc-punch.mp3');
+                } else {
+                    AudioManager.getInstance().playSFX('/assets/sounds/dev-bone-punch.mp3');
+                }
+            }
+        }
+    }, [lastAttackEvent, players]);
+
     // Auto-follow logic
     useEffect(() => {
         if (!selectedMonsterId || !monsters[selectedMonsterId] || !players[localPlayerId || '']) return;
@@ -173,14 +202,32 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
 
             if (dist > 1.5) {
                 onMove(monster.position.x, monster.position.y);
+            } else {
+                // Attack if close
+                const now = Date.now();
+                if (now - lastAttackTime.current > 500) {
+                    onAttack(selectedMonsterId);
+                    lastAttackTime.current = now;
+                }
             }
         } else {
-            // Monster stopped moving?
-            // If we are close enough, we stop following?
-            // Or if we haven't reached it, we keep going (which onMove handles)
+            // Monster stopped moving, but we might still be moving towards it or close to it
+            // Check distance
+            const dist = Math.sqrt(
+                Math.pow(player.position.x - monster.position.x, 2) +
+                Math.pow(player.position.y - monster.position.y, 2)
+            );
+
+            if (dist <= 2) {
+                const now = Date.now();
+                if (now - lastAttackTime.current > 500) {
+                    onAttack(selectedMonsterId);
+                    lastAttackTime.current = now;
+                }
+            }
         }
 
-    }, [monsters, selectedMonsterId, localPlayerId, onMove]); // Runs when monsters update
+    }, [monsters, selectedMonsterId, localPlayerId, onMove, onAttack]); // Runs when monsters update
 
     return (
         <canvas

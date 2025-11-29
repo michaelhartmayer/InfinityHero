@@ -3,56 +3,74 @@ import { useEffect, useState } from 'react';
 
 interface ClassData {
     id: string;
+    name: string;
     icon: string;
 }
 
 interface HUDProps {
     player: Player;
+    isMuted?: boolean;
+    onToggleMute?: () => void;
 }
 
-export function HUD({ player }: HUDProps) {
-    const [classIcons, setClassIcons] = useState<Record<string, string>>({});
+export function HUD({ player, isMuted = false, onToggleMute }: HUDProps) {
+    const [classData, setClassData] = useState<Record<string, ClassData>>({});
 
     useEffect(() => {
         fetch('/api/classes')
             .then(res => res.json())
             .then((data: ClassData[]) => {
-                const icons: Record<string, string> = {};
-                data.forEach(c => icons[c.id] = c.icon);
-                setClassIcons(icons);
+                const map: Record<string, ClassData> = {};
+                data.forEach(c => map[c.id] = c);
+                setClassData(map);
             })
-            .catch(err => console.error("Failed to load class icons:", err));
+            .catch(err => console.error("Failed to load class data:", err));
     }, []);
 
-    const hpPercent = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
-    const energyPercent = Math.max(0, Math.min(100, (player.energy / player.maxEnergy) * 100));
+    const classInfo = classData[player.class];
 
     return (
         <div className="hud-container">
             <div className="hud-profile">
                 <div className="hud-avatar">
-                    {classIcons[player.class] || '❓'}
+                    {classInfo?.icon || '👤'}
                 </div>
                 <div className="hud-info">
                     <div className="hud-name">{player.name}</div>
-                    <div className="hud-level">Lvl {player.level}</div>
+                    <div className="hud-level">Lvl {player.level} {classInfo?.name || 'Hero'}</div>
                 </div>
             </div>
 
             <div className="hud-bars">
-                <div className="bar-container hp-bar-container">
+                <div className="bar-container">
+                    <div className="bar-text">{Math.floor(player.hp)} / {player.maxHp} HP</div>
                     <div className="bar-track">
-                        <div className="bar-fill hp-fill" style={{ width: `${hpPercent}%` }}></div>
-                        <div className="bar-text">{Math.floor(player.hp)} / {player.maxHp}</div>
+                        <div
+                            className="bar-fill hp-fill"
+                            style={{ width: `${(player.hp / player.maxHp) * 100}%` }}
+                        />
                     </div>
                 </div>
-                <div className="bar-container energy-bar-container">
+                <div className="bar-container">
+                    <div className="bar-text">{Math.floor(player.energy)} / {player.maxEnergy} EP</div>
                     <div className="bar-track">
-                        <div className="bar-fill energy-fill" style={{ width: `${energyPercent}%` }}></div>
-                        <div className="bar-text">{Math.floor(player.energy)} / {player.maxEnergy}</div>
+                        <div
+                            className="bar-fill energy-fill"
+                            style={{ width: `${(player.energy / player.maxEnergy) * 100}%` }}
+                        />
                     </div>
                 </div>
             </div>
+
+            {onToggleMute && (
+                <button
+                    className="menu-btn"
+                    onClick={onToggleMute}
+                    title={isMuted ? "Unmute Music" : "Mute Music"}
+                >
+                    {isMuted ? '🔇' : '🔊'}
+                </button>
+            )}
         </div>
     );
 }

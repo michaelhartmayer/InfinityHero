@@ -27,10 +27,13 @@ export class GameRenderer {
     private uiRenderer: UIRenderer;
 
     private lastFrameTime: number = 0;
+    private localPlayerPos: { x: number, y: number } | undefined;
+    private localPlayerId: string | null;
 
     public onDebugUpdate: ((info: string) => void) | undefined;
 
     constructor(canvas: HTMLCanvasElement, localPlayerId: string | null) {
+        this.localPlayerId = localPlayerId;
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x202020);
 
@@ -80,7 +83,7 @@ export class GameRenderer {
 
         this.interactionManager = new InteractionManager(this.camera, this.monsterRenderer);
 
-        this.uiRenderer = new UIRenderer(canvas, this.playerRenderer);
+        this.uiRenderer = new UIRenderer(canvas, this.playerRenderer, this.monsterRenderer);
 
         this.loadAssets();
 
@@ -139,12 +142,28 @@ export class GameRenderer {
         this.uiRenderer.showChatBubble(playerId, message);
     }
 
+    public showDamage(targetId: string, damage: number, attackerId?: string) {
+        this.uiRenderer.showDamage(targetId, damage, attackerId);
+    }
+
     public renderMap(map: WorldMap) {
         this.mapRenderer.renderMap(map);
     }
 
     public updatePlayers(players: Record<string, Player>, currentMap: WorldMap | null) {
         this.playerRenderer.updatePlayers(players, currentMap);
+
+        // Update local player position for audio calculations
+        // Convert to world coordinates (same as monster positions)
+        const localPlayer = players[this.localPlayerId || ''];
+        if (localPlayer && currentMap) {
+            const offsetX = currentMap.width / 2;
+            const offsetY = currentMap.height / 2;
+            this.localPlayerPos = {
+                x: localPlayer.position.x - offsetX,
+                y: localPlayer.position.y - offsetY
+            };
+        }
     }
 
     public updateItems(items: Record<string, Item>, mapData: WorldMap) {
@@ -152,7 +171,7 @@ export class GameRenderer {
     }
 
     public updateMonsters(monsters: Record<string, Monster>, mapData: WorldMap) {
-        this.monsterRenderer.updateMonsters(monsters, mapData);
+        this.monsterRenderer.updateMonsters(monsters, mapData, this.localPlayerPos);
     }
 
     public screenToWorld(x: number, y: number, width: number, height: number, map: WorldMap): { x: number, y: number } | null {
