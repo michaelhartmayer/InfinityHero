@@ -168,10 +168,12 @@ export class MonsterRenderer {
                 bgMesh.position.set(0, 0.7, 0);
 
                 const fgGeo = new THREE.PlaneGeometry(0.6, 0.1);
+                fgGeo.translate(0.3, 0, 0); // Anchor to left
                 const fgMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                 const healthBar = new THREE.Mesh(fgGeo, fgMat);
                 healthBar.name = 'healthBar';
                 healthBar.position.z = 0.01;
+                healthBar.position.x = -0.3; // Align left edge with background left edge
 
                 bgMesh.add(healthBar);
                 mesh.add(bgMesh);
@@ -298,10 +300,12 @@ export class MonsterRenderer {
                     bgMesh.position.set(0, 0.7, 0);
 
                     const fgGeo = new THREE.PlaneGeometry(0.6, 0.1);
+                    fgGeo.translate(0.3, 0, 0); // Anchor to left
                     const fgMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                     const healthBar = new THREE.Mesh(fgGeo, fgMat);
                     healthBar.name = 'healthBar';
                     healthBar.position.z = 0.01;
+                    healthBar.position.x = -0.3; // Align left edge with background left edge
                     bgMesh.add(healthBar);
                     mesh.add(bgMesh);
 
