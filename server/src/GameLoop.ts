@@ -3,19 +3,22 @@ import { Server } from 'socket.io';
 import { EntityManager } from './managers/EntityManager.js';
 import { SkillDatabase } from './managers/SkillDatabase.js';
 import { WorldManager } from './managers/WorldManager.js';
+import { ScriptEngine } from './managers/ScriptEngine.js';
 
 export class GameLoop {
     private io: Server;
     private entityManager: EntityManager;
     private worldManager: WorldManager;
     private skillDatabase: SkillDatabase;
+    private scriptEngine: ScriptEngine;
     private interval: NodeJS.Timeout | null = null;
 
-    constructor(io: Server, entityManager: EntityManager, worldManager: WorldManager, skillDatabase: SkillDatabase) {
+    constructor(io: Server, entityManager: EntityManager, worldManager: WorldManager, skillDatabase: SkillDatabase, scriptEngine: ScriptEngine) {
         this.io = io;
         this.entityManager = entityManager;
         this.worldManager = worldManager;
         this.skillDatabase = skillDatabase;
+        this.scriptEngine = scriptEngine;
     }
 
     public start() {
@@ -81,24 +84,35 @@ export class GameLoop {
                         const attackCooldown = 1000; // 1 second cooldown
 
                         if (now - player.lastAttackTime >= attackCooldown) {
-                            const damage = 10; // Base damage
-                            const isDead = this.entityManager.applyDamage(target.id, damage, player.id);
+                            if (skillTemplate && skillTemplate.script) {
+                                this.scriptEngine.execute(skillTemplate.script, {
+                                    self: player,
+                                    target: target,
+                                    trigger: 'ACTIVATE'
+                                });
+                            } else {
+                                const damage = 10; // Base damage
+                                const isDead = this.entityManager.applyDamage(target.id, damage, player.id);
 
-                            this.io.emit(EVENTS.ATTACK, {
-                                attackerId: player.id,
-                                targetId: target.id,
-                                damage
-                            });
+                                this.io.emit(EVENTS.ATTACK, {
+                                    attackerId: player.id,
+                                    targetId: target.id,
+                                    damage
+                                });
+
+                                if (isDead) {
+                                    this.io.emit(EVENTS.PLAYER_DEATH, { playerId: target.id });
+                                    if (target.type === 'player') {
+                                        this.entityManager.respawnPlayer(target.id);
+                                    } else {
+                                        this.entityManager.removeMonster(target.id);
+                                    }
+                                }
+                            }
 
                             player.lastAttackTime = now;
 
-                            if (isDead) {
-                                this.io.emit(EVENTS.PLAYER_DEATH, { playerId: target.id });
-                                if (target.type === 'player') {
-                                    this.entityManager.respawnPlayer(target.id);
-                                } else {
-                                    this.entityManager.removeMonster(target.id);
-                                }
+                            if (target.hp <= 0) {
                                 // Clear target since they are dead
                                 player.targetId = null;
                             }

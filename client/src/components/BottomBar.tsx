@@ -14,9 +14,10 @@ interface BottomBarProps {
     onToggleMute?: () => void;
     onToggleDebug?: () => void;
     onToggleClassSelector?: () => void;
+    onSkillSelect?: (skillId: string) => void;
 }
 
-export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted = false, onToggleMute, onToggleDebug, onToggleClassSelector }: BottomBarProps) {
+export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted = false, onToggleMute, onToggleDebug, onToggleClassSelector, onSkillSelect }: BottomBarProps) {
     const [skillData, setSkillData] = useState<Record<string, SkillData>>({});
 
     useEffect(() => {
@@ -46,6 +47,11 @@ export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted
                             key={index}
                             className={`skill-slot ${isActive ? 'active' : ''}`}
                             title={skill ? skill.name : 'Empty Slot'}
+                            onClick={() => {
+                                if (skillId && onSkillSelect) {
+                                    onSkillSelect(skillId);
+                                }
+                            }}
                         >
                             {skill ? <span className="skill-icon">{skill.icon}</span> : <span className="skill-key">{index + 1}</span>}
                         </div>

@@ -22,6 +22,7 @@ export function GamePage() {
     const [monsters, setMonsters] = useState<Record<string, Monster>>({});
     const [broadcastMessage, setBroadcastMessage] = useState<BroadcastMessage | null>(null);
     const [lastAttackEvent, setLastAttackEvent] = useState<{ attackerId: string, targetId: string, damage: number } | null>(null);
+    const [lastEffectEvent, setLastEffectEvent] = useState<{ effectId: string, position: { x: number, y: number }, durationMs: number } | null>(null);
     const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
@@ -84,6 +85,12 @@ export function GamePage() {
 
         newSocket.on(EVENTS.BROADCAST_MESSAGE, (message: BroadcastMessage) => {
             setBroadcastMessage(message);
+        });
+
+        newSocket.on(EVENTS.EFFECT, (data: { effectId: string, position: { x: number, y: number }, durationMs: number }) => {
+            console.log('Effect event received:', data);
+            // The effect will be handled by GameCanvas via lastEffectEvent
+            setLastEffectEvent(data);
         });
 
         newSocket.on(EVENTS.COMMAND_HELP, (data: { commands: string[] }) => {
@@ -178,15 +185,49 @@ export function GamePage() {
     const [isChatMode, setIsChatMode] = useState(false);
     const [debugInfo, setDebugInfo] = useState<string>('');
 
+    const [skillData, setSkillData] = useState<Record<string, any>>({});
+
+    useEffect(() => {
+        fetch('/api/skills')
+            .then(res => res.json())
+            .then((data: any[]) => {
+                const map: Record<string, any> = {};
+                data.forEach(s => map[s.id] = s);
+                setSkillData(map);
+            })
+            .catch(err => console.error("Failed to load skills:", err));
+    }, []);
+
+    const handleSkillSelect = (skillId: string) => {
+        if (!socket) return;
+
+        socket.emit(EVENTS.PLAYER_SET_ACTIVE_SKILL, skillId);
+        // The server will handle auto-casting self-target skills
+    };
+
+    const handleClassSelect = (classId: string) => {
+        if (socket) {
+            socket.emit(EVENTS.PLAYER_CHANGE_CLASS, classId);
+        }
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // Ignore if typing in an input or textarea
             const target = e.target as HTMLElement;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-                // If we want to allow Escape to exit chat mode:
                 if (e.key === 'Escape') {
                     setIsChatMode(false);
-                    // We also need to blur, which is handled by the effect in ChatWindow dependent on isChatMode
+                }
+                return;
+            }
+
+            // Number keys for skills
+            if (['1', '2', '3', '4', '5'].includes(e.key)) {
+                const index = parseInt(e.key) - 1;
+                const localPlayer = socket?.id ? players[socket.id] : null;
+                if (localPlayer && localPlayer.skills && localPlayer.skills[index]) {
+                    handleSkillSelect(localPlayer.skills[index]);
                 }
                 return;
             }
@@ -208,7 +249,7 @@ export function GamePage() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isInventoryOpen, isChatMode]);
+    }, [isInventoryOpen, isChatMode, players, socket, skillData]);
 
     const handleSendMessage = (message: string) => {
         // Client-side fallback for help command
@@ -245,12 +286,6 @@ export function GamePage() {
     const [isDebugVisible, setIsDebugVisible] = useState(false);
     const [isClassSelectorOpen, setIsClassSelectorOpen] = useState(false);
 
-    const handleClassSelect = (classId: string) => {
-        if (socket) {
-            socket.emit(EVENTS.PLAYER_CHANGE_CLASS, classId);
-        }
-    };
-
     return (
         <div className="App">
             <div className="ui-layer">
@@ -275,6 +310,7 @@ export function GamePage() {
                                 }}
                                 onToggleDebug={() => setIsDebugVisible(!isDebugVisible)}
                                 onToggleClassSelector={() => setIsClassSelectorOpen(!isClassSelectorOpen)}
+                                onSkillSelect={handleSkillSelect}
                             />
                         </div>
                     </>
@@ -308,6 +344,7 @@ export function GamePage() {
                     localPlayerId={socket?.id || null}
                     lastMessage={messages.length > 0 ? messages[messages.length - 1] : null}
                     lastAttackEvent={lastAttackEvent}
+                    lastEffectEvent={lastEffectEvent}
                     onMove={handleMove}
                     onAttack={(targetId) => {
                         if (socket) {

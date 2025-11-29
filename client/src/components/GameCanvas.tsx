@@ -11,12 +11,13 @@ interface GameCanvasProps {
     localPlayerId: string | null;
     lastMessage: ChatMessage | null;
     lastAttackEvent: { attackerId: string, targetId: string, damage: number } | null;
+    lastEffectEvent: { effectId: string, position: { x: number, y: number }, durationMs: number } | null;
     onMove: (x: number, y: number) => void;
     onAttack: (targetId: string) => void;
     onDebugUpdate?: (info: string) => void;
 }
 
-export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, lastAttackEvent, onMove, onAttack, onDebugUpdate }: GameCanvasProps) {
+export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, lastAttackEvent, lastEffectEvent, onMove, onAttack, onDebugUpdate }: GameCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<GameRenderer | null>(null);
     const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
@@ -178,6 +179,26 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
             }
         }
     }, [lastAttackEvent, players]);
+
+    // Track processed effects to prevent duplicates
+    const lastProcessedEffectRef = useRef<{ effectId: string, position: { x: number, y: number }, durationMs: number } | null>(null);
+
+    // Handle effect events
+    useEffect(() => {
+        if (lastEffectEvent && rendererRef.current && mapData && lastEffectEvent !== lastProcessedEffectRef.current) {
+            lastProcessedEffectRef.current = lastEffectEvent;
+
+            // Convert world coordinates to map coordinates
+            const offsetX = mapData.width / 2;
+            const offsetY = mapData.height / 2;
+            const worldPos = {
+                x: lastEffectEvent.position.x - offsetX,
+                y: lastEffectEvent.position.y - offsetY
+            };
+
+            rendererRef.current.playEffect(lastEffectEvent.effectId, worldPos);
+        }
+    }, [lastEffectEvent, mapData]);
 
     // Auto-follow logic
     useEffect(() => {

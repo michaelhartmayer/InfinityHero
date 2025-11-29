@@ -150,6 +150,10 @@ export class GameRenderer {
         this.uiRenderer.showChatBubble(playerId, message);
     }
 
+    public playEffect(effectId: string, position: { x: number, y: number }) {
+        this.effectRenderer.playEffect(effectId, position);
+    }
+
     public showDamage(targetId: string, damage: number, attackerId?: string) {
         this.uiRenderer.showDamage(targetId, damage, attackerId);
 

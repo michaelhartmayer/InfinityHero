@@ -92,7 +92,15 @@ export class UIRenderer {
         const wrapper = document.createElement('div');
         const div = document.createElement('div');
         div.className = 'damage-indicator';
-        div.textContent = `-${damage}`;
+
+        // If damage is negative, it's healing - show as positive green number
+        const isHealing = damage < 0;
+        if (isHealing) {
+            div.textContent = `+${Math.abs(damage)}`;
+            div.style.color = '#00ff00'; // Green for healing
+        } else {
+            div.textContent = `-${damage}`;
+        }
 
         // Set direction variables for CSS
         div.style.setProperty('--dir-x', `${dirX}`);

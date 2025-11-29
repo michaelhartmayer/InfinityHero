@@ -12,6 +12,7 @@ export interface SkillTemplate {
     range: number;
     icon: string;
     target: 'target' | 'self' | 'passive';
+    script?: string;
 }
 
 export class SkillDatabase {

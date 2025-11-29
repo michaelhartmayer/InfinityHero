@@ -14,6 +14,7 @@ import { MapLoader } from './utils/MapLoader.js';
 import { SwatchLoader } from './utils/SwatchLoader.js';
 import { ClassDatabase } from './managers/ClassDatabase.js';
 import { EffectDatabase } from './managers/EffectDatabase.js';
+import { ScriptEngine } from './managers/ScriptEngine.js';
 
 const app = express();
 app.use(cors());
@@ -315,12 +316,13 @@ const entityManager = new EntityManager(classDatabase, monsterDatabase);
 const skillDatabase = new SkillDatabase();
 const spriteDatabase = new SpriteDatabase();
 const effectDatabase = new EffectDatabase();
+const scriptEngine = new ScriptEngine(entityManager, io);
 
 app.get('/api/effects', (req, res) => {
     res.json(effectDatabase.getAllTemplates());
 });
 console.log('Initialized Class Database');
-const gameLoop = new GameLoop(io, entityManager, worldManager, skillDatabase);
+const gameLoop = new GameLoop(io, entityManager, worldManager, skillDatabase, scriptEngine);
 
 // Get map data for spawning
 const mapData = worldManager.getMapData();
@@ -629,6 +631,32 @@ io.on('connection', (socket) => {
                     timestamp: Date.now()
                 });
                 // Force state update immediately
+                io.emit(EVENTS.STATE_UPDATE, {
+                    players: entityManager.getAllPlayers(),
+                    items: entityManager.getAllItems(),
+                    monsters: entityManager.getAllMonsters()
+                });
+            }
+        });
+
+        socket.on(EVENTS.PLAYER_SET_ACTIVE_SKILL, (skillId: string) => {
+            const player = entityManager.getPlayer(socket.id);
+            if (player && player.skills.includes(skillId)) {
+                player.activeSkill = skillId;
+
+                // Check if this is a self-cast skill - if so, execute immediately
+                const skillTemplate = skillDatabase.getTemplate(skillId);
+                if (skillTemplate && skillTemplate.target === 'self' && skillTemplate.script) {
+                    // Execute the skill script immediately
+                    const scriptEngine = new ScriptEngine(entityManager, io);
+                    scriptEngine.execute(skillTemplate.script, {
+                        self: player,
+                        target: player,
+                        trigger: 'ACTIVATE'
+                    });
+                }
+
+                // Notify player
                 io.emit(EVENTS.STATE_UPDATE, {
                     players: entityManager.getAllPlayers(),
                     items: entityManager.getAllItems(),

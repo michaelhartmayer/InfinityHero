@@ -6,7 +6,8 @@
             "description": "A basic melee attack.",
             "range": 0,
             "icon": "👊",
-            "target": "target"
+            "target": "target",
+            "script": "ACTIVATE damage_target 10,$_target;"
         },
         {
             "id": "dev_self_heal",
@@ -14,7 +15,8 @@
             "description": "Dev: Heal yourself.",
             "range": 1,
             "icon": "⛑️",
-            "target": "self"
+            "target": "self",
+            "script": "ACTIVATE heal_target 20,$_self;\nACTIVATE effect heal_aura,@$_self,1000;"
         }
     ]
 }

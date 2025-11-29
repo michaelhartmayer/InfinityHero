@@ -83,6 +83,8 @@ export const EVENTS = {
     COMMAND_SPAWN: 'command_spawn',
     BROADCAST_MESSAGE: 'broadcast_message',
     PLAYER_CHANGE_CLASS: 'player_change_class',
+    PLAYER_SET_ACTIVE_SKILL: 'player_set_active_skill',
+    EFFECT: 'effect',
 };
 
 export const CONSTANTS = {
