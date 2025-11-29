@@ -6,6 +6,12 @@ import { VFXLibrary } from '../vfx/VFXLibrary';
 import { CursorGroundEffect } from '../vfx/effects/CursorGroundEffect';
 import { TilesetLoader } from './TilesetLoader';
 
+export const CursorState = {
+    PASSIVE: 0,
+    SELECT_TARGET: 1
+} as const;
+export type CursorState = typeof CursorState[keyof typeof CursorState];
+
 export class GameRenderer {
     private scene: THREE.Scene;
     private camera: THREE.OrthographicCamera;
@@ -35,6 +41,7 @@ export class GameRenderer {
     private cursorGroundEffect: CursorGroundEffect;
     private cursorPosition: { x: number, y: number } | null = null;
     private tilesetLoader: TilesetLoader;
+    private cursorState: CursorState = CursorState.PASSIVE;
 
     private currentMapData: WorldMap | null = null;
     private lastFrameTime: number = 0;
@@ -160,6 +167,19 @@ export class GameRenderer {
         }
     }
 
+    public setCursorState(state: CursorState) {
+        this.cursorState = state;
+
+        // Immediate visibility update
+        if (state === CursorState.PASSIVE) {
+            this.cursorGroundEffect.group.visible = false;
+            // highlightMesh visibility is handled in setHighlight/animate
+        } else {
+            this.highlightMesh.visible = false;
+            // cursorGroundEffect visibility is handled in animate
+        }
+    }
+
     public setHighlight(x: number, y: number, map: WorldMap) {
         const offsetX = map.width / 2;
         const offsetY = map.height / 2;
@@ -167,7 +187,12 @@ export class GameRenderer {
         const worldY = y - offsetY;
 
         this.highlightMesh.position.set(worldX, worldY, 0.1);
-        this.highlightMesh.visible = true;
+
+        if (this.cursorState === CursorState.PASSIVE) {
+            this.highlightMesh.visible = true;
+        } else {
+            this.highlightMesh.visible = false;
+        }
 
         // Pulse effect
         const scale = 1 + Math.sin(Date.now() * 0.01) * 0.05;
@@ -775,7 +800,8 @@ export class GameRenderer {
 
         // Animate cursor effect
         if (this.cursorPosition) {
-            this.cursorGroundEffect.update(this.cursorPosition.x, this.cursorPosition.y, true);
+            const showGroundEffect = this.cursorState === CursorState.SELECT_TARGET;
+            this.cursorGroundEffect.update(this.cursorPosition.x, this.cursorPosition.y, showGroundEffect);
         }
 
         // Animate selection

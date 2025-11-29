@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { GameRenderer } from '../game/GameRenderer';
+import { GameRenderer, CursorState } from '../game/GameRenderer';
 import type { WorldMap, Player, Item, Monster, ChatMessage } from '@vibemaster/shared';
 
 interface GameCanvasProps {
@@ -17,6 +17,7 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
     const rendererRef = useRef<GameRenderer | null>(null);
     const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
     const lastMonsterPos = useRef<{ x: number, y: number } | null>(null);
+    const lastMousePos = useRef<{ x: number, y: number } | null>(null);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -68,7 +69,18 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
+            lastMousePos.current = { x, y };
+
             const target = rendererRef.current.screenToWorld(x, y, rect.width, rect.height, mapData);
+
+            // Check for monster hover
+            const hoveredMonsterId = rendererRef.current.pickMonster(x, y, rect.width, rect.height);
+            if (hoveredMonsterId) {
+                rendererRef.current.setCursorState(CursorState.SELECT_TARGET);
+            } else {
+                rendererRef.current.setCursorState(CursorState.PASSIVE);
+            }
+
             if (target) {
                 rendererRef.current.setHighlight(target.x, target.y, mapData);
             }
@@ -103,6 +115,23 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
             // Ensure selection is maintained visually
             if (selectedMonsterId) {
                 rendererRef.current.selectMonster(selectedMonsterId, monsters, mapData);
+            }
+
+            // Re-check hover state if mouse hasn't moved but monsters have
+            if (lastMousePos.current && canvasRef.current) {
+                const rect = canvasRef.current.getBoundingClientRect();
+                const hoveredMonsterId = rendererRef.current.pickMonster(
+                    lastMousePos.current.x,
+                    lastMousePos.current.y,
+                    rect.width,
+                    rect.height
+                );
+
+                if (hoveredMonsterId) {
+                    rendererRef.current.setCursorState(CursorState.SELECT_TARGET);
+                } else {
+                    rendererRef.current.setCursorState(CursorState.PASSIVE);
+                }
             }
         }
     }, [players, items, monsters, mapData, selectedMonsterId]);
