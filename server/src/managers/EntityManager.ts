@@ -74,7 +74,10 @@ export class EntityManager {
             inventory: [],
             moveTarget: null,
             movePath: [],
-            skills: randomClass ? randomClass.startingSkills : ['melee']
+            skills: randomClass ? randomClass.startingSkills : ['melee'],
+            activeSkill: 'melee',
+            targetId: null,
+            lastAttackTime: 0
         };
         this.players[id] = player;
         this.updateSpatialMap(id, null, position);

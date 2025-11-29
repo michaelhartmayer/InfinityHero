@@ -259,6 +259,7 @@ export function GamePage() {
                             <BottomBar
                                 onToggleInventory={() => setIsInventoryOpen(!isInventoryOpen)}
                                 skills={localPlayer?.skills}
+                                activeSkill={localPlayer?.activeSkill}
                                 isMuted={isMuted}
                                 onToggleMute={() => {
                                     const newMuted = AudioManager.getInstance().toggleMute();

@@ -9,12 +9,13 @@ interface SkillData {
 interface BottomBarProps {
     onToggleInventory: () => void;
     skills?: string[];
+    activeSkill?: string;
     isMuted?: boolean;
     onToggleMute?: () => void;
     onToggleDebug?: () => void;
 }
 
-export function BottomBar({ onToggleInventory, skills = [], isMuted = false, onToggleMute, onToggleDebug }: BottomBarProps) {
+export function BottomBar({ onToggleInventory, skills = [], activeSkill, isMuted = false, onToggleMute, onToggleDebug }: BottomBarProps) {
     const [skillData, setSkillData] = useState<Record<string, SkillData>>({});
 
     useEffect(() => {
@@ -37,9 +38,14 @@ export function BottomBar({ onToggleInventory, skills = [], isMuted = false, onT
                 {slots.map(index => {
                     const skillId = skills[index];
                     const skill = skillId ? skillData[skillId] : null;
+                    const isActive = skillId === activeSkill;
 
                     return (
-                        <div key={index} className="skill-slot" title={skill ? skill.name : 'Empty Slot'}>
+                        <div
+                            key={index}
+                            className={`skill-slot ${isActive ? 'active' : ''}`}
+                            title={skill ? skill.name : 'Empty Slot'}
+                        >
                             {skill ? <span className="skill-icon">{skill.icon}</span> : <span className="skill-key">{index + 1}</span>}
                         </div>
                     );

@@ -1,18 +1,21 @@
 import { EVENTS, CONSTANTS, MonsterStrategyType, Monster, Player, Entity } from '@vibemaster/shared';
 import { Server } from 'socket.io';
 import { EntityManager } from './managers/EntityManager.js';
+import { SkillDatabase } from './managers/SkillDatabase.js';
 import { WorldManager } from './managers/WorldManager.js';
 
 export class GameLoop {
     private io: Server;
     private entityManager: EntityManager;
     private worldManager: WorldManager;
+    private skillDatabase: SkillDatabase;
     private interval: NodeJS.Timeout | null = null;
 
-    constructor(io: Server, entityManager: EntityManager, worldManager: WorldManager) {
+    constructor(io: Server, entityManager: EntityManager, worldManager: WorldManager, skillDatabase: SkillDatabase) {
         this.io = io;
         this.entityManager = entityManager;
         this.worldManager = worldManager;
+        this.skillDatabase = skillDatabase;
     }
 
     public start() {
@@ -47,6 +50,94 @@ export class GameLoop {
         const players = this.entityManager.getAllPlayers();
 
         for (const player of Object.values(players)) {
+            // Handle auto-attack / chasing
+            if (player.targetId) {
+                let target: any = this.entityManager.getPlayer(player.targetId);
+                if (!target) {
+                    target = this.entityManager.getMonster(player.targetId);
+                }
+
+                if (target) {
+                    const dx = player.position.x - target.position.x;
+                    const dy = player.position.y - target.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Get active skill range
+                    const skillId = player.activeSkill || 'melee';
+                    const skillTemplate = this.skillDatabase.getTemplate(skillId);
+                    const range = skillTemplate ? skillTemplate.range : 0;
+
+                    // Range 0 = adjacent (dist <= 1.5)
+                    // Range 1 = 1 tile between (dist <= 2.5)
+                    // Formula: range + 1.5
+                    const attackRange = range + 1.5;
+
+                    if (dist <= attackRange) {
+                        // In range! Stop moving and attack
+                        player.moveTarget = null;
+                        player.movePath = [];
+
+                        const now = Date.now();
+                        const attackCooldown = 1000; // 1 second cooldown
+
+                        if (now - player.lastAttackTime >= attackCooldown) {
+                            const damage = 10; // Base damage
+                            const isDead = this.entityManager.applyDamage(target.id, damage, player.id);
+
+                            this.io.emit(EVENTS.ATTACK, {
+                                attackerId: player.id,
+                                targetId: target.id,
+                                damage
+                            });
+
+                            player.lastAttackTime = now;
+
+                            if (isDead) {
+                                this.io.emit(EVENTS.PLAYER_DEATH, { playerId: target.id });
+                                if (target.type === 'player') {
+                                    this.entityManager.respawnPlayer(target.id);
+                                } else {
+                                    this.entityManager.removeMonster(target.id);
+                                }
+                                // Clear target since they are dead
+                                player.targetId = null;
+                            }
+                        }
+                    } else {
+                        // Out of range, chase!
+                        // Re-calculate path if we have no path or target moved far?
+                        // For now, let's just re-path if we aren't moving or every so often?
+                        // Simpler: If no moveTarget, find path.
+                        if (!player.moveTarget) {
+                            // Find nearest walkable tile to target
+                            const dest = this.worldManager.findNearestWalkableTile(
+                                target.position.x,
+                                target.position.y,
+                                player.position.x,
+                                player.position.y,
+                                (x, y) => this.entityManager.isPositionOccupied(x, y, player.id)
+                            );
+
+                            if (dest) {
+                                const path = this.worldManager.findPath(
+                                    player.position.x,
+                                    player.position.y,
+                                    dest.x,
+                                    dest.y,
+                                    (x, y) => this.entityManager.isPositionOccupied(x, y, player.id)
+                                );
+                                if (path.length > 0) {
+                                    this.entityManager.setMovePath(player.id, path);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Target lost
+                    player.targetId = null;
+                }
+            }
+
             this.handleEntityMovement(player);
             this.entityManager.checkItemPickup(player.id);
         }

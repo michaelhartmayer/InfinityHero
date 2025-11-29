@@ -250,4 +250,45 @@ export class WorldManager {
 
         return [];
     }
+    public findNearestWalkableTile(targetX: number, targetY: number, startX: number, startY: number, isOccupied?: (x: number, y: number) => boolean): { x: number, y: number } | null {
+        const rTargetX = Math.round(targetX);
+        const rTargetY = Math.round(targetY);
+
+        // If target itself is walkable, return it
+        if (this.isWalkable(rTargetX, rTargetY, isOccupied)) {
+            return { x: rTargetX, y: rTargetY };
+        }
+
+        // Check neighbors in expanding rings
+        // For now, just check immediate neighbors (radius 1)
+        // We want the one closest to startX, startY
+        const neighbors = [
+            { x: rTargetX + 1, y: rTargetY },
+            { x: rTargetX - 1, y: rTargetY },
+            { x: rTargetX, y: rTargetY + 1 },
+            { x: rTargetX, y: rTargetY - 1 },
+            { x: rTargetX + 1, y: rTargetY + 1 },
+            { x: rTargetX - 1, y: rTargetY - 1 },
+            { x: rTargetX + 1, y: rTargetY - 1 },
+            { x: rTargetX - 1, y: rTargetY + 1 }
+        ];
+
+        let bestTile = null;
+        let minDist = Infinity;
+
+        for (const tile of neighbors) {
+            if (this.isWalkable(tile.x, tile.y, isOccupied)) {
+                const dx = tile.x - startX;
+                const dy = tile.y - startY;
+                const dist = dx * dx + dy * dy;
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestTile = tile;
+                }
+            }
+        }
+
+        return bestTile;
+    }
 }

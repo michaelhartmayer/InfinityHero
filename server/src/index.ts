@@ -320,7 +320,7 @@ app.get('/api/effects', (req, res) => {
     res.json(effectDatabase.getAllTemplates());
 });
 console.log('Initialized Class Database');
-const gameLoop = new GameLoop(io, entityManager, worldManager);
+const gameLoop = new GameLoop(io, entityManager, worldManager, skillDatabase);
 
 // Get map data for spawning
 const mapData = worldManager.getMapData();
@@ -379,6 +379,9 @@ io.on('connection', (socket) => {
             console.log(`Player ${socket.id.substring(0, 4)} moving to:`, target);
             const player = entityManager.getPlayer(socket.id);
             if (player) {
+                // Clear attack target on manual move
+                player.targetId = null;
+
                 // Calculate path from current position to target
                 const path = worldManager.findPath(
                     player.position.x,
@@ -557,23 +560,44 @@ io.on('connection', (socket) => {
             }
 
             if (attacker && target) {
+                // Set target for auto-attacking
+                attacker.targetId = targetId;
+
                 const dx = attacker.position.x - target.position.x;
                 const dy = attacker.position.y - target.position.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist <= 2) {
-                    const isDead = entityManager.applyDamage(targetId, 10, attacker.id);
-                    io.emit(EVENTS.ATTACK, { attackerId: attacker.id, targetId: target.id, damage: 10 });
+                // Get active skill range
+                const skillId = attacker.activeSkill || 'melee';
+                const skillTemplate = skillDatabase.getTemplate(skillId);
+                const range = skillTemplate ? skillTemplate.range : 0;
+                const attackRange = range + 1.5;
 
-                    if (isDead) {
-                        io.emit(EVENTS.PLAYER_DEATH, { playerId: target.id });
-                        if (target.type === 'player') {
-                            entityManager.respawnPlayer(target.id);
-                        } else {
-                            entityManager.removeMonster(target.id);
+                // If out of range, start moving towards target
+                if (dist > attackRange) {
+                    const dest = worldManager.findNearestWalkableTile(
+                        target.position.x,
+                        target.position.y,
+                        attacker.position.x,
+                        attacker.position.y,
+                        (x, y) => entityManager.isPositionOccupied(x, y, attacker.id)
+                    );
+
+                    if (dest) {
+                        const path = worldManager.findPath(
+                            attacker.position.x,
+                            attacker.position.y,
+                            dest.x,
+                            dest.y,
+                            (x, y) => entityManager.isPositionOccupied(x, y, attacker.id)
+                        );
+
+                        if (path.length > 0) {
+                            entityManager.setMovePath(attacker.id, path);
                         }
                     }
                 }
+                // If in range, the GameLoop will handle the attack execution
             }
         });
 

@@ -32,6 +32,9 @@ export interface Player extends Entity {
     moveTarget: Position | null; // Current target position (next node in path)
     movePath: Position[]; // Full path to destination
     skills: string[];
+    activeSkill: string;
+    targetId: string | null;
+    lastAttackTime: number;
 }
 
 export enum MonsterStrategyType {
