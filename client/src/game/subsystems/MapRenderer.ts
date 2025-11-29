@@ -125,7 +125,8 @@ export class MapRenderer {
                 });
 
                 const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.set(x - offsetX, y - offsetY, 0);
+                // Invert Y axis: map[0][0] should be at top-left
+                mesh.position.set(x - offsetX, (map.height - 1 - y) - offsetY, 0);
                 this.group.add(mesh);
             }
         }
@@ -147,7 +148,8 @@ export class MapRenderer {
             for (let y = 0; y < map.height; y++) {
                 const tile = map.tiles[x][y];
                 const mesh = new THREE.Mesh(geometry, materials[tile.type]);
-                mesh.position.set(x - offsetX, y - offsetY, 0);
+                // Invert Y axis
+                mesh.position.set(x - offsetX, (map.height - 1 - y) - offsetY, 0);
                 this.group.add(mesh);
             }
         }
