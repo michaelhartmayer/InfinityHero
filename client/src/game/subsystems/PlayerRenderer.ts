@@ -259,13 +259,44 @@ export class PlayerRenderer {
                         case 'up': animName = AnimationState.WALK_UP; break;
                         case 'down': animName = AnimationState.WALK_DOWN; break;
                     }
+                } else {
+                    // Try directional idle
+                    switch (state.facing) {
+                        case 'left': animName = 'idle_left'; break;
+                        case 'right': animName = 'idle_right'; break;
+                        case 'up': animName = 'idle_up'; break;
+                        case 'down': animName = 'idle_down'; break;
+                    }
+
+                    // Check if directional idle exists
+                    if (!sprite.animations[animName] && !sprite.animations[animName.toUpperCase()]) {
+                        // Fallback to walk animation (stationary)
+                        switch (state.facing) {
+                            case 'left': animName = AnimationState.WALK_LEFT; break;
+                            case 'right': animName = AnimationState.WALK_RIGHT; break;
+                            case 'up': animName = AnimationState.WALK_UP; break;
+                            case 'down': animName = AnimationState.WALK_DOWN; break;
+                        }
+                    }
                 }
 
-                const anim = sprite.animations[animName];
+                let anim = sprite.animations[animName] ||
+                    sprite.animations[animName.toUpperCase()];
+
+                if (!anim) {
+                    const targetName = animName.toLowerCase();
+                    const key = Object.keys(sprite.animations).find(k => k.toLowerCase() === targetName);
+                    if (key) anim = sprite.animations[key];
+                }
 
                 if (anim && anim.frames.length > 0) {
                     const totalFrames = anim.frames.length;
-                    const frameIdx = Math.floor(state.animationTime * anim.frameRate) % totalFrames;
+                    // If we are using a walk animation but not moving, force frame 0 (or 1 depending on cycle)
+                    // Usually frame 0 is the "standing" frame for a walk cycle
+                    const frameIdx = state.isMoving
+                        ? Math.floor(state.animationTime * anim.frameRate) % totalFrames
+                        : 0;
+
                     const frame = anim.frames[frameIdx];
 
                     const uvs = this.spriteLoader.getFrameUVs(spriteId, frame);
@@ -278,10 +309,10 @@ export class PlayerRenderer {
                             if (now - this.lastDebugUpdateTime > 100) {
                                 this.lastDebugUpdateTime = now;
                                 onDebugUpdate(
-                                    `State: ${state.facing.toUpperCase()} ${state.isMoving ? '(MOVING)' : '(IDLE)'}\n` +
-                                    `Pos: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}\n` +
-                                    `Target: ${target ? target.x.toFixed(2) + ', ' + target.y.toFixed(2) : 'None'}\n` +
-                                    `Anim: ${animName} [${frameIdx}/${totalFrames}]`
+                                    `State: ${state.facing.toUpperCase()} ${state.isMoving ? '(MOVING)' : '(IDLE)'} \n` +
+                                    `Pos: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)} \n` +
+                                    `Target: ${target ? target.x.toFixed(2) + ', ' + target.y.toFixed(2) : 'None'} \n` +
+                                    `Anim: ${animName} [${frameIdx} / ${totalFrames}]`
                                 );
                             }
                         }
@@ -326,5 +357,26 @@ export class PlayerRenderer {
         this.playerMeshes.clear();
         this.playerStates.clear();
         this.playerTargets.clear();
+    }
+
+    public getPosition(id: string): { x: number, y: number } | undefined {
+        const mesh = this.playerMeshes.get(id);
+        if (mesh) {
+            return { x: mesh.position.x, y: mesh.position.y };
+        }
+        return undefined;
+    }
+
+    public setFacing(id: string, facing: 'up' | 'down' | 'left' | 'right') {
+        const state = this.playerStates.get(id);
+        if (state) {
+            state.facing = facing;
+            // If we are forcing facing, we might want to reset animation time if it was idle?
+            // But if they are fighting, they might be idle (not moving).
+            // Let's just set the facing. The updateAnimations loop will pick it up.
+            // However, updateAnimations overwrites facing if isMoving is true.
+            // If they are fighting, they are likely standing still or moving slightly.
+            // If they are moving, movement direction takes precedence.
+        }
     }
 }

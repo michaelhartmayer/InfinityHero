@@ -152,6 +152,39 @@ export class GameRenderer {
 
     public showDamage(targetId: string, damage: number, attackerId?: string) {
         this.uiRenderer.showDamage(targetId, damage, attackerId);
+
+        if (attackerId) {
+            // Calculate facing so they face each other
+            const attackerPos = this.playerRenderer.getPosition(attackerId) || this.monsterRenderer.getPosition(attackerId);
+            const targetPos = this.playerRenderer.getPosition(targetId) || this.monsterRenderer.getPosition(targetId);
+
+            if (attackerPos && targetPos) {
+                const dx = targetPos.x - attackerPos.x;
+                const dy = targetPos.y - attackerPos.y;
+
+                let attackerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
+                let targetFacing: 'up' | 'down' | 'left' | 'right' = 'down';
+
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    attackerFacing = dx > 0 ? 'right' : 'left';
+                    targetFacing = dx > 0 ? 'left' : 'right';
+                } else {
+                    attackerFacing = dy > 0 ? 'up' : 'down';
+                    targetFacing = dy > 0 ? 'down' : 'up';
+                }
+
+                console.log(`⚔️ Combat Facing: Attacker(${attackerId}) -> ${attackerFacing}, Target(${targetId}) -> ${targetFacing}`);
+
+                // Try setting facing on both renderers (one will succeed, one will be ignored)
+                this.playerRenderer.setFacing(attackerId, attackerFacing);
+                this.monsterRenderer.setFacing(attackerId, attackerFacing);
+
+                this.playerRenderer.setFacing(targetId, targetFacing);
+                this.monsterRenderer.setFacing(targetId, targetFacing);
+            } else {
+                console.warn(`⚠️ Could not find positions for combat facing: Attacker(${attackerId}), Target(${targetId})`);
+            }
+        }
     }
 
     public renderMap(map: WorldMap) {

@@ -342,7 +342,8 @@ export class MonsterRenderer {
             const dx = mesh.position.x - state.lastPosition.x;
             const dy = mesh.position.y - state.lastPosition.y;
 
-            const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+            // Increased threshold to 0.01 to prevent micro-movements (jitter) from overriding combat facing
+            const moved = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
             state.isMoving = moved;
 
             if (moved) {
@@ -400,6 +401,26 @@ export class MonsterRenderer {
                             case 'up': animName = AnimationState.WALK_UP; break;
                             case 'down': animName = AnimationState.WALK_DOWN; break;
                         }
+                    } else {
+                        // Try directional idle
+                        switch (state.facing) {
+                            case 'left': animName = 'idle_left'; break;
+                            case 'right': animName = 'idle_right'; break;
+                            case 'up': animName = 'idle_up'; break;
+                            case 'down': animName = 'idle_down'; break;
+                        }
+
+                        // Check if directional idle exists, otherwise fallback to generic IDLE
+                        // Note: sprite.animations keys might be case sensitive or not, the existing code handles uppercase fallback
+                        if (!sprite.animations[animName] && !sprite.animations[animName.toUpperCase()]) {
+                            // Fallback to walk animation (stationary)
+                            switch (state.facing) {
+                                case 'left': animName = AnimationState.WALK_LEFT; break;
+                                case 'right': animName = AnimationState.WALK_RIGHT; break;
+                                case 'up': animName = AnimationState.WALK_UP; break;
+                                case 'down': animName = AnimationState.WALK_DOWN; break;
+                            }
+                        }
                     }
 
                     let anim = sprite.animations[animName] ||
@@ -413,7 +434,9 @@ export class MonsterRenderer {
 
                     if (anim && anim.frames.length > 0) {
                         const totalFrames = anim.frames.length;
-                        const frameIdx = Math.floor(state.animationTime * anim.frameRate) % totalFrames;
+                        const frameIdx = state.isMoving
+                            ? Math.floor(state.animationTime * anim.frameRate) % totalFrames
+                            : 0;
                         const frame = anim.frames[frameIdx];
 
                         const material = mesh.material as THREE.MeshBasicMaterial;
@@ -481,5 +504,23 @@ export class MonsterRenderer {
         this.monsterStates.clear();
         this.monsterTargets.clear();
         this.lastStepTimes.clear();
+    }
+
+    public getPosition(id: string): { x: number, y: number } | undefined {
+        const mesh = this.monsterMeshes.get(id);
+        if (mesh) {
+            return { x: mesh.position.x, y: mesh.position.y };
+        }
+        return undefined;
+    }
+
+    public setFacing(id: string, facing: 'up' | 'down' | 'left' | 'right') {
+        const state = this.monsterStates.get(id);
+        if (state) {
+            console.log(`👹 MonsterRenderer.setFacing(${id}, ${facing})`);
+            state.facing = facing;
+        } else {
+            console.warn(`⚠️ MonsterRenderer.setFacing: State not found for ${id}`);
+        }
     }
 }
