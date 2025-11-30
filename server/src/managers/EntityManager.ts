@@ -163,13 +163,31 @@ export class EntityManager {
             spawnEffect: template.spawnEffect,
             lastAttackTime: 0,
             xpReward: template.xpReward || (template.baseLevel * 50),
-            attackers: []
+            attackers: [],
+            templateId: monsterId
         };
 
         this.monsters[id] = monster;
         this.updateSpatialMap(id, null, position);
         console.log(`🐉 Spawned ${template.name} at (${position.x}, ${position.y})`);
         return monster;
+    }
+
+    public updateActiveMonsters(template: any) {
+        let count = 0;
+        for (const monster of Object.values(this.monsters)) {
+            if (monster.templateId === template.id) {
+                // Update properties
+                if (template.xpReward !== undefined) {
+                    monster.xpReward = template.xpReward;
+                }
+                // We could update other stats here too, but XP is the request
+                count++;
+            }
+        }
+        if (count > 0) {
+            console.log(`Updated ${count} active monsters of type ${template.id}`);
+        }
     }
 
     public addMonster(

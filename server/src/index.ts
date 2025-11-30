@@ -28,6 +28,7 @@ app.get('/api/monsters', (req, res) => {
 app.post('/api/monsters', (req, res) => {
     const template = req.body;
     monsterDatabase.updateTemplate(template);
+    entityManager.updateActiveMonsters(template);
     res.json({ success: true });
 });
 

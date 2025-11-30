@@ -11,7 +11,7 @@
             "fleeStrategy": "low_hp",
             "sprite": "spr_dev_monster",
             "spawnEffect": "shadow_step",
-            "xpReward": 15
+            "xpReward": 35
         },
         {
             "id": "slime_blue",

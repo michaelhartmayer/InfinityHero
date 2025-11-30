@@ -60,6 +60,7 @@ export interface Monster extends Entity {
     lastAttackTime?: number;
     xpReward?: number;
     attackers: string[];
+    templateId?: string;
 }
 
 export interface GameState {
