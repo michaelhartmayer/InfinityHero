@@ -320,6 +320,36 @@ const styles = `
 
 // --- Components ---
 
+const UndoIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7v6h6" />
+        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+    </svg>
+);
+
+const RedoIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 7v6h-6" />
+        <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+    </svg>
+);
+
+const EyeIcon = ({ off }: { off?: boolean }) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {off ? (
+            <>
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+            </>
+        ) : (
+            <>
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+            </>
+        )}
+    </svg>
+);
+
 const MonsterSpritePreview = ({ spriteId }: { spriteId: string }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [spriteData, setSpriteData] = useState<Sprite | null>(null);
@@ -963,6 +993,10 @@ const MapEditView = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [mousePos, setMousePos] = useState<{ x: number, y: number } | null>(null);
+    const [showNoWalk, setShowNoWalk] = useState(false);
+    const [history, setHistory] = useState<MapData[]>([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+    const hasModifiedMapRef = useRef(false);
     const dragStartRef = useRef<{
         origin: { x: number, y: number };
         size: { w: number, h: number };
@@ -1029,6 +1063,8 @@ const MapEditView = () => {
         const data = await res.json();
         if (!data.placedSwatches) data.placedSwatches = [];
         setMapData(data);
+        setHistory([JSON.parse(JSON.stringify(data))]);
+        setHistoryIndex(0);
     };
 
     const fetchSwatches = async () => {
@@ -1037,6 +1073,53 @@ const MapEditView = () => {
         setSwatchSets(data);
         if (data.length > 0) setActiveSetId(data[0].id);
     };
+
+    const addToHistory = (newData: MapData) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(JSON.parse(JSON.stringify(newData)));
+        if (newHistory.length > 50) newHistory.shift();
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    };
+
+    const handleUndo = () => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setMapData(JSON.parse(JSON.stringify(history[newIndex])));
+        }
+    };
+
+    const handleRedo = () => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setMapData(JSON.parse(JSON.stringify(history[newIndex])));
+        }
+    };
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            // Check if we are focusing an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') {
+                    e.preventDefault();
+                    handleUndo();
+                } else if (e.key === 'y') {
+                    e.preventDefault();
+                    handleRedo();
+                }
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [history, historyIndex]); // Depend on state directly if handlers are not memoized, or depend on handlers if they capture state.
+    // Actually handleUndo/Redo capture state from closure, so they change every render.
+    // So [handleUndo, handleRedo] works but rebinds every render.
+    // Better to use refs for history if we want to avoid rebind, but rebind is cheap here.
+
 
     const handleSave = async () => {
         if (!mapData) return;
@@ -1051,6 +1134,59 @@ const MapEditView = () => {
             alert('Failed to save map!');
         }
     };
+
+    const walkabilityMap = React.useMemo(() => {
+        if (!mapData) return new Map<string, boolean>();
+        const map = new Map<string, boolean>();
+
+        const swatchMap = new Map();
+        swatchSets.forEach(set => {
+            set.swatches.forEach((s: any) => swatchMap.set(s.id, s));
+        });
+
+        if (mapData.placedSwatches) {
+            mapData.placedSwatches.forEach(p => {
+                const swatch = swatchMap.get(p.swatchId);
+                if (!swatch) return;
+
+                const isWalkable = swatch.properties?.walkable ?? true;
+
+                let minX = Infinity, minY = Infinity;
+                swatch.tiles.forEach((t: any) => {
+                    const tx = Number(t.x);
+                    const ty = Number(t.y);
+                    if (tx < minX) minX = tx;
+                    if (ty < minY) minY = ty;
+                });
+
+                const mapGridSize = 32;
+                const swatchGridSize = swatch.gridSize || 32;
+                const scale = mapGridSize / swatchGridSize;
+
+                swatch.tiles.forEach((t: any, idx: number) => {
+                    if (p.tileIdx !== undefined && p.tileIdx !== idx) return;
+
+                    const tx = Number(t.x);
+                    const ty = Number(t.y);
+
+                    let drawX, drawY;
+                    if (p.tileIdx !== undefined) {
+                        drawX = p.x;
+                        drawY = p.y;
+                    } else {
+                        drawX = p.x + (tx - minX) * scale;
+                        drawY = p.y + (ty - minY) * scale;
+                    }
+
+                    const gx = Math.round(drawX / 32) * 32;
+                    const gy = Math.round(drawY / 32) * 32;
+
+                    map.set(`${gx},${gy}`, isWalkable);
+                });
+            });
+        }
+        return map;
+    }, [mapData, swatchSets]);
 
     // Canvas Rendering Loop
     useEffect(() => {
@@ -1188,9 +1324,31 @@ const MapEditView = () => {
             }
         }
 
+        // Draw No Walk Overlay
+        if (showNoWalk) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            const startX = Math.floor(-pan.x / zoom / 32) * 32;
+            const startY = Math.floor(-pan.y / zoom / 32) * 32;
+            const endX = startX + (canvas.width / zoom) + 32;
+            const endY = startY + (canvas.height / zoom) + 32;
+
+            for (let y = startY; y <= endY; y += 32) {
+                for (let x = startX; x <= endX; x += 32) {
+                    const key = `${x},${y}`;
+                    const isWalkable = walkabilityMap.has(key)
+                        ? walkabilityMap.get(key)
+                        : (mapData.tiles?.default.walkable ?? true);
+
+                    if (!isWalkable) {
+                        ctx.fillRect(x, y, 32, 32);
+                    }
+                }
+            }
+        }
+
         ctx.restore();
 
-    }, [mapData, pan, zoom, tilesetImages, tilesetMetadata, swatchSets, mousePos, selectedSwatch]);
+    }, [mapData, pan, zoom, tilesetImages, tilesetMetadata, swatchSets, mousePos, selectedSwatch, walkabilityMap, showNoWalk]);
 
     const handleWheel = (e: React.WheelEvent) => {
         if (!containerRef.current) return;
@@ -1277,6 +1435,10 @@ const MapEditView = () => {
     const handleMouseUp = () => {
         setIsPanning(false);
         dragStartRef.current = null;
+        if (hasModifiedMapRef.current && mapData) {
+            addToHistory(mapData);
+            hasModifiedMapRef.current = false;
+        }
     };
 
     const placeSwatch = (e: React.MouseEvent) => {
@@ -1414,6 +1576,7 @@ const MapEditView = () => {
             newPlacedSwatches.push(newTilePlacement);
         });
 
+        hasModifiedMapRef.current = true;
         setMapData({
             ...mapData,
             placedSwatches: newPlacedSwatches
@@ -1479,27 +1642,63 @@ const MapEditView = () => {
                 </div>
 
                 {/* Map View */}
-                <div
-                    ref={containerRef}
-                    style={{
-                        flex: 1,
-                        background: '#1a1a1a',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        userSelect: 'none',
-                        cursor: isPanning ? 'grabbing' : 'crosshair'
-                    }}
-                    onWheel={handleWheel}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
-                >
-                    <canvas
-                        ref={canvasRef}
-                        style={{ display: 'block', width: '100%', height: '100%' }}
-                    />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {/* Toolbar */}
+                    <div style={{
+                        display: 'flex', gap: '10px', padding: '5px 10px',
+                        background: 'rgba(0,0,0,0.3)', borderRadius: '4px', alignItems: 'center'
+                    }}>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ padding: '5px', display: 'flex', alignItems: 'center', opacity: historyIndex > 0 ? 1 : 0.5 }}
+                            onClick={handleUndo}
+                            disabled={historyIndex <= 0}
+                            title="Undo (Ctrl+Z)"
+                        >
+                            <UndoIcon />
+                        </button>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ padding: '5px', display: 'flex', alignItems: 'center', opacity: historyIndex < history.length - 1 ? 1 : 0.5 }}
+                            onClick={handleRedo}
+                            disabled={historyIndex >= history.length - 1}
+                            title="Redo (Ctrl+Y)"
+                        >
+                            <RedoIcon />
+                        </button>
+                        <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 5px' }} />
+                        <button
+                            className={`btn ${showNoWalk ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ padding: '5px', display: 'flex', alignItems: 'center' }}
+                            onClick={() => setShowNoWalk(!showNoWalk)}
+                            title="Toggle No Walk Areas"
+                        >
+                            <EyeIcon off={!showNoWalk} />
+                        </button>
+                    </div>
+
+                    <div
+                        ref={containerRef}
+                        style={{
+                            flex: 1,
+                            background: '#1a1a1a',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            userSelect: 'none',
+                            cursor: isPanning ? 'grabbing' : 'crosshair'
+                        }}
+                        onWheel={handleWheel}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseLeave}
+                    >
+                        <canvas
+                            ref={canvasRef}
+                            style={{ display: 'block', width: '100%', height: '100%' }}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
