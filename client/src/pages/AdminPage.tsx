@@ -114,7 +114,7 @@ const styles = `
         width: 100vw;
         background: #121212;
         color: #e0e0e0;
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-main);
         overflow: hidden;
     }
 
@@ -130,8 +130,9 @@ const styles = `
     }
 
     .sidebar-header {
+        font-family: var(--font-title);
         font-size: 1.5rem;
-        font-weight: bold;
+        font-weight: 400;
         margin-bottom: 20px;
         background: linear-gradient(45deg, #ff00cc, #3333ff);
         -webkit-background-clip: text;
@@ -171,8 +172,9 @@ const styles = `
     }
 
     .editor-title {
-        font-size: 2rem;
-        font-weight: bold;
+        font-family: var(--font-title);
+        font-size: 2.5rem;
+        font-weight: 400;
     }
 
     .card-grid {
@@ -216,7 +218,9 @@ const styles = `
 
     .card h3 {
         margin: 0 0 10px 0;
-        font-size: 1.2rem;
+        font-family: var(--font-title);
+        font-size: 1.4rem;
+        font-weight: 400;
     }
 
     .card p {
@@ -242,7 +246,8 @@ const styles = `
         display: block;
         margin-bottom: 8px;
         color: #bbb;
-        font-size: 0.9rem;
+        font-family: var(--font-title);
+        font-size: 1.1rem;
     }
 
     .form-input, .form-select, .form-textarea {
@@ -266,10 +271,11 @@ const styles = `
         padding: 12px 24px;
         border-radius: 8px;
         border: none;
-        font-weight: 600;
+        font-family: var(--font-title);
+        font-weight: 400;
         cursor: pointer;
         transition: all 0.2s;
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 
     .btn-primary {
@@ -305,7 +311,7 @@ const styles = `
     }
 
     .json-editor {
-        font-family: 'Fira Code', monospace;
+        font-family: monospace;
         font-size: 0.9rem;
         min-height: 400px;
     }

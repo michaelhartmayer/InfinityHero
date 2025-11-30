@@ -179,7 +179,7 @@ export class MonsterRenderer {
                 mesh.add(bgMesh);
 
                 const div = document.createElement('div');
-                div.className = 'monster-label';
+                div.className = 'player-label';
                 div.textContent = `${monster.name} (Lvl ${monster.level})`;
                 div.style.color = 'white';
                 div.style.textShadow = '0 0 4px black';
@@ -310,7 +310,7 @@ export class MonsterRenderer {
                     mesh.add(bgMesh);
 
                     const div = document.createElement('div');
-                    div.className = 'monster-label';
+                    div.className = 'player-label';
                     div.textContent = `${savedName} (Lvl ${savedLevel})`;
                     div.style.color = 'white';
                     div.style.textShadow = '0 0 4px black';
