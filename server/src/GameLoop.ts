@@ -12,6 +12,7 @@ export class GameLoop {
     private skillDatabase: SkillDatabase;
     private scriptEngine: ScriptEngine;
     private interval: NodeJS.Timeout | null = null;
+    private lastUpdateTime: number = Date.now();
 
     constructor(io: Server, entityManager: EntityManager, worldManager: WorldManager, skillDatabase: SkillDatabase, scriptEngine: ScriptEngine) {
         this.io = io;
@@ -23,6 +24,7 @@ export class GameLoop {
 
     public start() {
         const tickMs = 1000 / CONSTANTS.TICK_RATE;
+        this.lastUpdateTime = Date.now();
         this.interval = setInterval(() => {
             this.update();
         }, tickMs);
@@ -36,8 +38,12 @@ export class GameLoop {
     }
 
     private update() {
-        this.updatePlayers();
-        this.updateMonsters();
+        const now = Date.now();
+        const dt = Math.min((now - this.lastUpdateTime) / 1000, 0.1);
+        this.lastUpdateTime = now;
+
+        this.updatePlayers(dt);
+        this.updateMonsters(dt);
 
         // Broadcast state
         const state = {
@@ -49,7 +55,7 @@ export class GameLoop {
         this.io.emit(EVENTS.STATE_UPDATE, state);
     }
 
-    private updatePlayers() {
+    private updatePlayers(dt: number) {
         const players = this.entityManager.getAllPlayers();
 
         for (const player of Object.values(players)) {
@@ -156,17 +162,17 @@ export class GameLoop {
                 }
             }
 
-            this.handleEntityMovement(player);
+            this.handleEntityMovement(player, dt);
             this.entityManager.checkItemPickup(player.id);
         }
     }
 
-    private updateMonsters() {
+    private updateMonsters(dt: number) {
         const monsters = this.entityManager.getAllMonsters();
         const now = Date.now();
 
         for (const monster of Object.values(monsters)) {
-            this.handleEntityMovement(monster);
+            this.handleEntityMovement(monster, dt);
 
             switch (monster.strategy) {
                 case MonsterStrategyType.PASSIVE:
@@ -255,8 +261,8 @@ export class GameLoop {
         }
     }
 
-    private handleEntityMovement(entity: Player | Monster) {
-        const deltaTime = 1 / CONSTANTS.TICK_RATE;
+    private handleEntityMovement(entity: Player | Monster, dt: number) {
+        // const deltaTime = 1 / CONSTANTS.TICK_RATE; // Removed fixed delta time
         const moveSpeed = entity.type === 'player' ? CONSTANTS.MOVE_SPEED : CONSTANTS.MOVE_SPEED * 0.5; // Monsters slower
 
         if (entity.moveTarget) {
@@ -314,7 +320,7 @@ export class GameLoop {
                 }
             } else {
                 // Move toward target
-                const moveDistance = Math.min(moveSpeed * deltaTime, distance);
+                const moveDistance = Math.min(moveSpeed * dt, distance);
                 const normalizedX = dx / distance;
                 const normalizedY = dy / distance;
 
