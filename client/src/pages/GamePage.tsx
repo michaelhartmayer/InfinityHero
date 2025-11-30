@@ -23,7 +23,10 @@ export function GamePage() {
     const [broadcastMessage, setBroadcastMessage] = useState<BroadcastMessage | null>(null);
     const [lastAttackEvent, setLastAttackEvent] = useState<{ attackerId: string, targetId: string, damage: number } | null>(null);
     const [lastEffectEvent, setLastEffectEvent] = useState<{ effectId: string, position?: { x: number, y: number }, entityId?: string, durationMs: number } | null>(null);
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(() => {
+        const saved = localStorage.getItem('audio_muted');
+        return saved === 'true';
+    });
     // Map: skillId -> expirationTimestamp
     const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
     // Map: skillId -> duration in ms (for progress calculation)
@@ -42,6 +45,11 @@ export function GamePage() {
                 console.log('Restoring saved alias:', savedAlias);
                 newSocket.emit(EVENTS.CHAT_MESSAGE, `/alias ${savedAlias}`);
             }
+
+            // Restore audio mute state
+            const savedMuted = localStorage.getItem('audio_muted') === 'true';
+            AudioManager.getInstance().setMuted(savedMuted);
+            setIsMuted(savedMuted);
         });
 
         newSocket.on('disconnect', () => {
@@ -342,6 +350,7 @@ export function GamePage() {
                                 onToggleMute={() => {
                                     const newMuted = AudioManager.getInstance().toggleMute();
                                     setIsMuted(newMuted);
+                                    localStorage.setItem('audio_muted', newMuted.toString());
                                 }}
                                 onToggleDebug={() => setIsDebugVisible(!isDebugVisible)}
                                 onToggleClassSelector={() => setIsClassSelectorOpen(!isClassSelectorOpen)}
