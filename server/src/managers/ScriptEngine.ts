@@ -57,6 +57,9 @@ export class ScriptEngine {
             case 'cooldown':
                 this.cooldown(args, context);
                 break;
+            case 'energy_cost':
+                this.energy_cost(args, context);
+                break;
             default:
                 console.warn(`Unknown script function: ${name}`);
         }
@@ -210,5 +213,24 @@ export class ScriptEngine {
         }
 
         return true;
+    }
+
+    private energy_cost(args: string[], context: ScriptContext) {
+        // Parse: energy_cost amount
+        const amount = parseInt(args[0]);
+
+        if (isNaN(amount) || amount < 0) {
+            console.warn(`Invalid energy cost amount: ${args[0]}`);
+            return;
+        }
+
+        // Only players have energy costs
+        if (context.self.type !== 'player') {
+            return;
+        }
+
+        // Deduct energy
+        context.self.energy = Math.max(0, context.self.energy - amount);
+        console.log(`⚡ Player ${context.self.id} spent ${amount} energy (${context.self.energy} remaining)`);
     }
 }

@@ -16,7 +16,7 @@
             "range": 1,
             "icon": "⛑️",
             "target": "self",
-            "script": "# Set 3-second cooldown\nACTIVATE cooldown 3000;\n\n# Heals the target\nACTIVATE heal_target 10,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,$_self,1000;\n"
+            "script": "# Set 3-second cooldown\nACTIVATE cooldown 3000;\n\n# Cost 10 energy\nACTIVATE energy_cost 10;\n\n# Heals the target\nACTIVATE heal_target 10,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,$_self,1000;\n"
         }
     ]
 }
