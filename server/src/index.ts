@@ -11,296 +11,23 @@ import { SkillDatabase } from './managers/SkillDatabase.js';
 import { GameLoop } from './GameLoop.js';
 import { SpriteDatabase } from './managers/SpriteDatabase.js';
 import { MapLoader } from './utils/MapLoader.js';
-import { SwatchLoader } from './utils/SwatchLoader.js';
 import { ClassDatabase } from './managers/ClassDatabase.js';
 import { EffectDatabase } from './managers/EffectDatabase.js';
 import { ScriptEngine } from './managers/ScriptEngine.js';
 
+// API Routes
+import { createMonsterRoutes } from './api/monsters/routes.js';
+import { createSkillRoutes } from './api/skills/routes.js';
+import { createSpriteRoutes, createSpriteTextureRoutes } from './api/sprites/routes.js';
+import { createClassRoutes } from './api/classes/routes.js';
+import { createEffectRoutes } from './api/effects/routes.js';
+import { createMapRoutes, createActiveMapRoutes } from './api/maps/routes.js';
+import { createSwatchRoutes } from './api/swatches/routes.js';
+import { createTilesetRoutes } from './api/tilesets/routes.js';
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
-// API Routes
-app.get('/api/monsters', (req, res) => {
-    res.json(monsterDatabase.getAllTemplates());
-});
-
-app.post('/api/monsters', (req, res) => {
-    const template = req.body;
-    monsterDatabase.updateTemplate(template);
-    entityManager.updateActiveMonsters(template);
-    res.json({ success: true });
-});
-
-app.delete('/api/monsters/:id', (req, res) => {
-    const { id } = req.params;
-    monsterDatabase.deleteTemplate(id);
-    res.json({ success: true });
-});
-
-app.get('/api/skills', (req, res) => {
-    res.json(skillDatabase.getAllTemplates());
-});
-
-app.post('/api/skills', (req, res) => {
-    const template = req.body;
-    skillDatabase.updateTemplate(template);
-    res.json({ success: true });
-});
-
-app.delete('/api/skills/:id', (req, res) => {
-    const { id } = req.params;
-    skillDatabase.deleteTemplate(id);
-    res.json({ success: true });
-});
-
-app.get('/api/sprites', (req, res) => {
-    res.json(spriteDatabase.getAllTemplates());
-});
-
-app.post('/api/sprites', (req, res) => {
-    const template = req.body;
-    spriteDatabase.updateTemplate(template);
-    res.json({ success: true });
-});
-
-app.delete('/api/sprites/:id', (req, res) => {
-    const { id } = req.params;
-    spriteDatabase.deleteTemplate(id);
-    res.json({ success: true });
-});
-
-app.get('/api/sprite-textures', (req, res) => {
-    try {
-        const spritesDir = path.join(process.cwd(), '../client/public/assets/sprites');
-        if (!fs.existsSync(spritesDir)) {
-            return res.json([]);
-        }
-        const files = fs.readdirSync(spritesDir);
-        const textures = files.filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.gif'));
-        res.json(textures);
-    } catch (error) {
-        console.error('Error listing sprite textures:', error);
-        res.status(500).json({ error: 'Failed to list sprite textures' });
-    }
-});
-
-app.get('/api/classes', (req, res) => {
-    classDatabase.reload();
-    res.json(classDatabase.getAllTemplates());
-});
-
-app.post('/api/classes', (req, res) => {
-    const template = req.body;
-    classDatabase.updateTemplate(template);
-    res.json({ success: true });
-});
-
-app.delete('/api/classes/:id', (req, res) => {
-    const { id } = req.params;
-    classDatabase.deleteTemplate(id);
-    res.json({ success: true });
-});
-
-app.get('/api/effects', (req, res) => {
-    res.json(effectDatabase.getAllTemplates());
-});
-
-app.post('/api/effects', (req, res) => {
-    const template = req.body;
-    effectDatabase.updateTemplate(template);
-    res.json({ success: true });
-});
-
-app.delete('/api/effects/:id', (req, res) => {
-    const { id } = req.params;
-    effectDatabase.deleteTemplate(id);
-    res.json({ success: true });
-});
-
-app.get('/api/active-map', (req, res) => {
-    res.json({ id: worldManager.getMapData().id });
-});
-
-app.post('/api/active-map', (req, res) => {
-    const { id } = req.body;
-    try {
-        console.log(`Switching active map to: ${id}`);
-        worldManager.loadMap(id);
-
-        // Respawn entities for new map
-        entityManager.clearMonsters();
-        entityManager.clearItems();
-
-        const mapData = worldManager.getMapData();
-
-        // Spawn monsters
-        for (const monsterSpawn of mapData.monsterSpawns) {
-            entityManager.spawnMonsterFromTemplate(
-                monsterSpawn.monsterId,
-                monsterSpawn.position
-            );
-        }
-
-        // Spawn items
-        if (mapData.itemSpawns) {
-            for (const itemSpawn of mapData.itemSpawns) {
-                const item: any = {
-                    id: `item_${itemSpawn.itemId}_${Date.now()}`,
-                    type: 'item',
-                    name: 'Health Potion', // TODO: Load from item database
-                    description: 'Restores 50 HP',
-                    icon: '🧪',
-                    position: itemSpawn.position
-                };
-                entityManager.addItem(item);
-            }
-        }
-
-        // Notify all clients
-        io.emit(EVENTS.MAP_DATA, worldManager.getMap());
-
-        // Teleport all players to spawn points
-        const players = Object.values(entityManager.getAllPlayers());
-        for (const player of players) {
-            const spawnPoint = MapLoader.getRandomSpawnPoint(mapData, 'player');
-            entityManager.updatePlayerPosition(player.id, spawnPoint);
-        }
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error switching map:', error);
-        res.status(500).json({ error: 'Failed to switch map' });
-    }
-});
-
-app.get('/api/maps', (req, res) => {
-    res.json(MapLoader.listMaps());
-});
-
-app.get('/api/maps/:id', (req, res) => {
-    try {
-        const map = MapLoader.loadMap(req.params.id);
-        res.json(map);
-    } catch (error) {
-        res.status(404).json({ error: 'Map not found' });
-    }
-});
-
-app.post('/api/map', (req, res) => {
-    try {
-        const mapData = req.body;
-        MapLoader.saveMap(mapData);
-
-        // If this is the active map, reload it in WorldManager
-        if (worldManager.getMapData().id === mapData.id) {
-            console.log(`Reloading active map: ${mapData.id}`);
-            worldManager.loadMap(mapData.id);
-            // Notify all clients
-            io.emit(EVENTS.MAP_DATA, worldManager.getMap());
-        }
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error saving map:', error);
-        res.status(500).json({ error: 'Failed to save map' });
-    }
-});
-
-app.delete('/api/maps/:id', (req, res) => {
-    try {
-        MapLoader.deleteMap(req.params.id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete map' });
-    }
-});
-
-// --- Swatches API ---
-const SWATCHES_FILE = path.join(process.cwd(), '../databases/swatches.json');
-
-app.get('/api/swatches', (req, res) => {
-    try {
-        if (!fs.existsSync(SWATCHES_FILE)) {
-            return res.json([]);
-        }
-        const content = fs.readFileSync(SWATCHES_FILE, 'utf-8');
-        res.json(JSON.parse(content));
-    } catch (error) {
-        console.error('Error reading swatches:', error);
-        res.status(500).json({ error: 'Failed to read swatches' });
-    }
-});
-
-app.post('/api/swatches', (req, res) => {
-    try {
-        const swatches = req.body;
-        fs.writeFileSync(SWATCHES_FILE, JSON.stringify(swatches, null, 4));
-        SwatchLoader.loadSwatches();
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error saving swatches:', error);
-        res.status(500).json({ error: 'Failed to save swatches' });
-    }
-});
-
-// --- Tileset API ---
-
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// Assuming server is running from server/dist or similar, we need to go up to root then to client
-// But simpler to rely on process.cwd() if we know where we run from.
-// Let's assume process.cwd() is the 'server' directory as per package.json scripts.
-const TILESETS_DIR = path.join(process.cwd(), '../client/public/assets/tilesets');
-
-app.get('/api/tilesets', (req, res) => {
-    try {
-        if (!fs.existsSync(TILESETS_DIR)) {
-            return res.json([]);
-        }
-        const files = fs.readdirSync(TILESETS_DIR);
-        const tilesets = files
-            .filter(f => f.endsWith('.json'))
-            .map(f => f.replace('.json', ''));
-        res.json(tilesets);
-    } catch (error) {
-        console.error('Error listing tilesets:', error);
-        res.status(500).json({ error: 'Failed to list tilesets' });
-    }
-});
-
-app.get('/api/tilesets/:name', (req, res) => {
-    try {
-        const { name } = req.params;
-        const filePath = path.join(TILESETS_DIR, `${name}.json`);
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'Tileset not found' });
-        }
-        const content = fs.readFileSync(filePath, 'utf-8');
-        res.json(JSON.parse(content));
-    } catch (error) {
-        console.error('Error reading tileset:', error);
-        res.status(500).json({ error: 'Failed to read tileset' });
-    }
-});
-
-app.post('/api/tilesets/:name', (req, res) => {
-    try {
-        const { name } = req.params;
-        const filePath = path.join(TILESETS_DIR, `${name}.json`);
-        // Basic validation
-        JSON.parse(JSON.stringify(req.body)); // Ensure valid JSON
-        fs.writeFileSync(filePath, JSON.stringify(req.body, null, 2));
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error saving tileset:', error);
-        res.status(500).json({ error: 'Failed to save tileset' });
-    }
-});
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -310,6 +37,7 @@ const io = new Server(httpServer, {
     }
 });
 
+// Initialize Managers
 const worldManager = new WorldManager('01_starting_zone');
 const classDatabase = new ClassDatabase();
 const monsterDatabase = new MonsterDatabase();
@@ -319,10 +47,20 @@ const spriteDatabase = new SpriteDatabase();
 const effectDatabase = new EffectDatabase();
 const scriptEngine = new ScriptEngine(entityManager, io);
 
-app.get('/api/effects', (req, res) => {
-    res.json(effectDatabase.getAllTemplates());
-});
 console.log('Initialized Class Database');
+
+// Register API Routes
+app.use('/api/monsters', createMonsterRoutes(monsterDatabase, entityManager));
+app.use('/api/skills', createSkillRoutes(skillDatabase));
+app.use('/api/sprites', createSpriteRoutes(spriteDatabase));
+app.use('/api/sprite-textures', createSpriteTextureRoutes());
+app.use('/api/classes', createClassRoutes(classDatabase));
+app.use('/api/effects', createEffectRoutes(effectDatabase));
+app.use('/api/maps', createMapRoutes(worldManager, io));
+app.use('/api/active-map', createActiveMapRoutes(worldManager, entityManager, io));
+app.use('/api/swatches', createSwatchRoutes());
+app.use('/api/tilesets', createTilesetRoutes());
+
 const gameLoop = new GameLoop(io, entityManager, worldManager, skillDatabase, scriptEngine);
 
 // Get map data for spawning
