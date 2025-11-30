@@ -95,9 +95,16 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
             }
         };
 
+        const handleWheel = (e: WheelEvent) => {
+            if (!rendererRef.current) return;
+            e.preventDefault();
+            rendererRef.current.adjustZoom(e.deltaY);
+        };
+
         window.addEventListener('resize', handleResize);
         canvasRef.current.addEventListener('mousedown', handleClick);
         canvasRef.current.addEventListener('mousemove', handleMouseMove);
+        canvasRef.current.addEventListener('wheel', handleWheel, { passive: false });
 
         handleResize(); // Initial size
 
@@ -105,6 +112,7 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
             window.removeEventListener('resize', handleResize);
             canvasRef.current?.removeEventListener('mousedown', handleClick);
             canvasRef.current?.removeEventListener('mousemove', handleMouseMove);
+            canvasRef.current?.removeEventListener('wheel', handleWheel);
         };
     }, [localPlayerId]); // Re-init if localPlayerId changes
 

@@ -6,7 +6,7 @@ import { PlayerRenderer } from './subsystems/PlayerRenderer';
 import { MonsterRenderer } from './subsystems/MonsterRenderer';
 import { ItemRenderer } from './subsystems/ItemRenderer';
 import { InteractionManager } from './subsystems/InteractionManager';
-import { EffectRenderer, CursorState } from './subsystems/EffectRenderer';
+import { EffectRenderer, CursorState, type CursorStateType } from './subsystems/EffectRenderer';
 import { UIRenderer } from './subsystems/UIRenderer';
 
 export { CursorState };
@@ -29,6 +29,7 @@ export class GameRenderer {
     private lastFrameTime: number = 0;
     private localPlayerPos: { x: number, y: number } | undefined;
     private localPlayerId: string | null;
+    private zoomLevel: number = 1;
 
     // Store game state for entity-attached effects
     private mapData: WorldMap | null = null;
@@ -54,7 +55,8 @@ export class GameRenderer {
             1000
         );
         this.camera.position.set(0, 0, 10);
-        this.camera.zoom = 1;
+        this.zoomLevel = 1;
+        this.camera.zoom = this.zoomLevel;
         this.camera.updateProjectionMatrix();
 
         this.renderer = new THREE.WebGLRenderer({
@@ -131,7 +133,7 @@ export class GameRenderer {
         this.mapRenderer.reRender();
     }
 
-    public setCursorState(state: CursorState) {
+    public setCursorState(state: CursorStateType) {
         this.effectRenderer.setCursorState(state);
     }
 
@@ -245,6 +247,19 @@ export class GameRenderer {
 
         this.effectRenderer.resize(width, height);
         this.uiRenderer.resize(width, height);
+    }
+
+    public adjustZoom(delta: number) {
+        const zoomSpeed = 0.001;
+        this.zoomLevel += delta * -zoomSpeed;
+
+        // Clamp zoom level: 1 (max out) to 2 (max in)
+        // User asked for "at least 30% closer", so 1.3 is the minimum max zoom.
+        // 2.0 allows for 100% closer (2x magnification).
+        this.zoomLevel = Math.max(1, Math.min(2, this.zoomLevel));
+
+        this.camera.zoom = this.zoomLevel;
+        this.camera.updateProjectionMatrix();
     }
 
     private lastDrawCalls: number = 0;

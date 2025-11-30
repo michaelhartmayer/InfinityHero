@@ -5,7 +5,7 @@ export class AudioManager {
     private currentUrl: string | null = null;
     private baseVolume: number = 0.5;
     private wasPlayingBeforeBlur: boolean = false;
-    private hasInteracted: boolean = false;
+
 
     private audioContext: AudioContext | null = null;
     private masterGain: GainNode | null = null;
@@ -52,7 +52,6 @@ export class AudioManager {
         // Handle autoplay policy
         const unlockAudio = () => {
             initAudioContext();
-            this.hasInteracted = true;
             if (this.currentUrl && this.audio.paused && !this.isMuted) {
                 this.tryPlay();
             }
