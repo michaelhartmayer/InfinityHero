@@ -7814,18 +7814,6 @@
         },
         {
             "x": 768,
-            "y": 768,
-            "swatchId": "dirt2",
-            "instanceId": "3b7ivzdrk"
-        },
-        {
-            "x": 768,
-            "y": 800,
-            "swatchId": "dirt2",
-            "instanceId": "zhkm740ln"
-        },
-        {
-            "x": 768,
             "y": 832,
             "swatchId": "single_water",
             "instanceId": "256i0en3n"
@@ -8189,21 +8177,17 @@
         },
         {
             "x": 800,
-            "y": 768,
+            "y": 864,
             "swatchId": "dirt2",
-            "instanceId": "mlvthiqi9"
+            "instanceId": "ofk6qanss",
+            "tileIdx": 2
         },
         {
-            "x": 800,
-            "y": 800,
+            "x": 832,
+            "y": 864,
             "swatchId": "dirt2",
-            "instanceId": "bhyobjuf2"
-        },
-        {
-            "x": 800,
-            "y": 832,
-            "swatchId": "dirt2",
-            "instanceId": "3dbc27orr"
+            "instanceId": "2fawogd3q",
+            "tileIdx": 3
         },
         {
             "x": 800,
@@ -8530,22 +8514,53 @@
             "instanceId": "v3oi3g6d9"
         },
         {
-            "x": 832,
+            "x": 864,
             "y": 768,
             "swatchId": "dirt2",
-            "instanceId": "8rrtty7hh"
+            "instanceId": "uodg3s9va",
+            "tileIdx": 1
         },
         {
-            "x": 832,
+            "x": 864,
             "y": 800,
             "swatchId": "dirt2",
-            "instanceId": "jy54krrt4"
+            "instanceId": "gsupow3xo",
+            "tileIdx": 3
+        },
+        {
+            "x": 864,
+            "y": 800,
+            "swatchId": "dirt2",
+            "instanceId": "9lw10ws6o",
+            "tileIdx": 1
+        },
+        {
+            "x": 864,
+            "y": 832,
+            "swatchId": "dirt2",
+            "instanceId": "rptth7qoi",
+            "tileIdx": 3
+        },
+        {
+            "x": 864,
+            "y": 832,
+            "swatchId": "dirt2",
+            "instanceId": "pr8kasjni",
+            "tileIdx": 1
         },
         {
             "x": 832,
-            "y": 832,
+            "y": 864,
             "swatchId": "dirt2",
-            "instanceId": "t7axefg9r"
+            "instanceId": "wh72wu0k9",
+            "tileIdx": 2
+        },
+        {
+            "x": 864,
+            "y": 864,
+            "swatchId": "dirt2",
+            "instanceId": "1sukv50dh",
+            "tileIdx": 3
         },
         {
             "x": 832,
@@ -18523,6 +18538,69 @@
             "swatchId": "cobble1",
             "instanceId": "ypy40rq9f",
             "tileIdx": 0
+        },
+        {
+            "x": 768,
+            "y": 768,
+            "swatchId": "fancy_panel",
+            "instanceId": "yu4f060lu",
+            "tileIdx": 0
+        },
+        {
+            "x": 800,
+            "y": 768,
+            "swatchId": "fancy_panel",
+            "instanceId": "ud9nz469d",
+            "tileIdx": 1
+        },
+        {
+            "x": 832,
+            "y": 768,
+            "swatchId": "fancy_panel",
+            "instanceId": "pvlgtab3e",
+            "tileIdx": 2
+        },
+        {
+            "x": 768,
+            "y": 800,
+            "swatchId": "fancy_panel",
+            "instanceId": "x9nffqbjb",
+            "tileIdx": 3
+        },
+        {
+            "x": 800,
+            "y": 800,
+            "swatchId": "fancy_panel",
+            "instanceId": "xdt7db1na",
+            "tileIdx": 4
+        },
+        {
+            "x": 832,
+            "y": 800,
+            "swatchId": "fancy_panel",
+            "instanceId": "rye3kc28j",
+            "tileIdx": 5
+        },
+        {
+            "x": 768,
+            "y": 832,
+            "swatchId": "fancy_panel",
+            "instanceId": "4xbczbn51",
+            "tileIdx": 6
+        },
+        {
+            "x": 800,
+            "y": 832,
+            "swatchId": "fancy_panel",
+            "instanceId": "0lt79beoj",
+            "tileIdx": 7
+        },
+        {
+            "x": 832,
+            "y": 832,
+            "swatchId": "fancy_panel",
+            "instanceId": "00nubctcc",
+            "tileIdx": 8
         }
     ]
 }

@@ -109,7 +109,7 @@ export class EffectRenderer {
         const offsetX = map.width / 2;
         const offsetY = map.height / 2;
         const worldX = x - offsetX;
-        const worldY = y - offsetY;
+        const worldY = (map.height - 1 - y) - offsetY;
 
         this.highlightMesh.position.set(worldX, worldY, 0.1);
 
@@ -126,7 +126,7 @@ export class EffectRenderer {
         if (position) {
             const offsetX = map.width / 2;
             const offsetY = map.height / 2;
-            this.selectionMesh.position.set(position.x - offsetX, position.y - offsetY, 0.1);
+            this.selectionMesh.position.set(position.x - offsetX, (map.height - 1 - position.y) - offsetY, 0.1);
             this.selectionMesh.visible = true;
         } else {
             this.selectionMesh.visible = false;
@@ -165,7 +165,7 @@ export class EffectRenderer {
                     const offsetX = mapData.width / 2;
                     const offsetY = mapData.height / 2;
                     effect.group.position.x = entity.position.x - offsetX;
-                    effect.group.position.y = entity.position.y - offsetY;
+                    effect.group.position.y = (mapData.height - 1 - entity.position.y) - offsetY;
                 }
             }
         }

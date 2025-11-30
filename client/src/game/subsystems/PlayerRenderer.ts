@@ -137,7 +137,7 @@ export class PlayerRenderer {
             }
 
             const targetX = player.position.x - offsetX;
-            const targetY = player.position.y - offsetY;
+            const targetY = (currentMap.height - 1 - player.position.y) - offsetY;
 
             if (!this.playerTargets.has(player.id)) {
                 mesh.position.set(targetX, targetY, 0.4);

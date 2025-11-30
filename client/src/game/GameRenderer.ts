@@ -210,6 +210,10 @@ export class GameRenderer {
         this.mapRenderer.renderMap(map);
     }
 
+    public toggleCollisionView(show: boolean) {
+        this.mapRenderer.toggleCollisionView(show);
+    }
+
     public updatePlayers(players: Record<string, Player>, currentMap: WorldMap | null) {
         this.players = players;
         this.playerRenderer.updatePlayers(players, currentMap);
@@ -222,7 +226,7 @@ export class GameRenderer {
             const offsetY = currentMap.height / 2;
             this.localPlayerPos = {
                 x: localPlayer.position.x - offsetX,
-                y: localPlayer.position.y - offsetY
+                y: (currentMap.height - 1 - localPlayer.position.y) - offsetY
             };
         }
     }

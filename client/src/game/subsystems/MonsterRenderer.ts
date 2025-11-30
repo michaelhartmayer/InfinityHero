@@ -199,7 +199,7 @@ export class MonsterRenderer {
             }
 
             const targetX = monster.position.x - offsetX;
-            const targetY = monster.position.y - offsetY;
+            const targetY = (mapData.height - 1 - monster.position.y) - offsetY;
 
             if (!this.monsterTargets.has(monster.id)) {
                 mesh.position.set(targetX, targetY, 0.3);

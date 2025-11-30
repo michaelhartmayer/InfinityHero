@@ -253,6 +253,71 @@
             "offsetY": 0,
             "spacingX": 0,
             "spacingY": 0
+        },
+        {
+            "id": "dev_goblin_scout",
+            "name": "Goblin Scout",
+            "type": "character",
+            "texture": "dev-rpg-characters-1.png",
+            "frameWidth": 52,
+            "frameHeight": 72,
+            "animations": {
+                "WALK_LEFT": {
+                    "frames": [
+                        69,
+                        70,
+                        71,
+                        70
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "WALK_RIGHT": {
+                    "frames": [
+                        81,
+                        82,
+                        83,
+                        82
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "WALK_DOWN": {
+                    "frames": [
+                        57,
+                        58,
+                        59,
+                        58
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "WALK_UP": {
+                    "frames": [
+                        93,
+                        94,
+                        95,
+                        94
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                },
+                "idle": {
+                    "frames": [
+                        58
+                    ],
+                    "frameRate": 10,
+                    "loop": false
+                }
+            },
+            "pivot": {
+                "x": 0.5,
+                "y": 1
+            },
+            "offsetX": 0,
+            "offsetY": 0,
+            "spacingX": 0,
+            "spacingY": 0
         }
     ]
 }

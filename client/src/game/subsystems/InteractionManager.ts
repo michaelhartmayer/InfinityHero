@@ -76,7 +76,7 @@ export class InteractionManager {
         const offsetY = map.height / 2;
 
         const mapX = Math.round(worldX + offsetX);
-        const mapY = Math.round(worldY + offsetY);
+        const mapY = Math.round((map.height - 1) - (worldY + offsetY));
 
         return { x: mapX, y: mapY };
     }

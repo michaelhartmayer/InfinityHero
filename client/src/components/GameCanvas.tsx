@@ -15,9 +15,10 @@ interface GameCanvasProps {
     onMove: (x: number, y: number) => void;
     onAttack: (targetId: string) => void;
     onDebugUpdate?: (info: string) => void;
+    showCollision?: boolean;
 }
 
-export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, lastAttackEvent, lastEffectEvent, onMove, onAttack, onDebugUpdate }: GameCanvasProps) {
+export function GameCanvas({ mapData, players, items, monsters, localPlayerId, lastMessage, lastAttackEvent, lastEffectEvent, onMove, onAttack, onDebugUpdate, showCollision }: GameCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<GameRenderer | null>(null);
     const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
@@ -124,6 +125,12 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
     }, [mapData]);
 
     useEffect(() => {
+        if (rendererRef.current) {
+            rendererRef.current.toggleCollisionView(!!showCollision);
+        }
+    }, [showCollision]);
+
+    useEffect(() => {
         if (rendererRef.current && mapData) {
             rendererRef.current.updatePlayers(players, mapData);
             rendererRef.current.updateItems(items, mapData);
@@ -207,7 +214,7 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
                     const offsetY = mapData.height / 2;
                     worldPos = {
                         x: entity.position.x - offsetX,
-                        y: entity.position.y - offsetY
+                        y: (mapData.height - 1 - entity.position.y) - offsetY
                     };
                     entityId = lastEffectEvent.entityId;
                 } else {
@@ -220,7 +227,7 @@ export function GameCanvas({ mapData, players, items, monsters, localPlayerId, l
                 const offsetY = mapData.height / 2;
                 worldPos = {
                     x: lastEffectEvent.position.x - offsetX,
-                    y: lastEffectEvent.position.y - offsetY
+                    y: (mapData.height - 1 - lastEffectEvent.position.y) - offsetY
                 };
             } else {
                 console.warn('Effect event missing both position and entityId');

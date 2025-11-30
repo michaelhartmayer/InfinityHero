@@ -129,6 +129,10 @@ export function GamePage() {
 
     const handleMove = (x: number, y: number) => {
         console.log('handleMove called:', x, y);
+        if (mapData && x >= 0 && x < mapData.width && y >= 0 && y < mapData.height) {
+            const tile = mapData.tiles[x][y];
+            console.log(`[CLIENT DEBUG] Clicked tile (${x}, ${y}): type=${tile.type}, walkable=${tile.walkable}`);
+        }
         if (socket) {
             console.log('Socket connected, processing move...');
 
@@ -274,10 +278,24 @@ export function GamePage() {
                 id: Math.random().toString(36).substr(2, 9),
                 playerId: 'system',
                 playerName: 'System',
-                message: 'Available commands:\n/help - Lists all available commands\n/alias [name] - Changes your character name\n/respawn - Respawns you at the starting location\n/spawn [monster id] [quantity] - Spawns monsters around you\n/broadcast [message] - Sends a broadcast message to all players',
+                message: 'Available commands:\n/help - Lists all available commands\n/alias [name] - Changes your character name\n/respawn - Respawns you at the starting location\n/spawn [monster id] [quantity] - Spawns monsters around you\n/broadcast [message] - Sends a broadcast message to all players\n/showcollision - Toggles collision overlay',
                 timestamp: Date.now()
             };
             setMessages((prev) => [...prev, helpMessage]);
+            setIsChatMode(false);
+            return;
+        }
+
+        if (message.trim().toLowerCase() === '/showcollision') {
+            setShowCollision(prev => !prev);
+            const sysMsg: ChatMessage = {
+                id: Math.random().toString(36).substr(2, 9),
+                playerId: 'system',
+                playerName: 'System',
+                message: `Collision overlay ${!showCollision ? 'enabled' : 'disabled'}`,
+                timestamp: Date.now()
+            };
+            setMessages((prev) => [...prev, sysMsg]);
             setIsChatMode(false);
             return;
         }
@@ -300,6 +318,7 @@ export function GamePage() {
     const localPlayer = socket?.id ? players[socket.id] : undefined;
 
     const [isDebugVisible, setIsDebugVisible] = useState(false);
+    const [showCollision, setShowCollision] = useState(false);
     const [isClassSelectorOpen, setIsClassSelectorOpen] = useState(false);
 
     return (
@@ -370,6 +389,7 @@ export function GamePage() {
                         }
                     }}
                     onDebugUpdate={setDebugInfo}
+                    showCollision={showCollision}
                 />
             </div>
         </div>

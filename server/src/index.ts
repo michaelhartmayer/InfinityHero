@@ -120,6 +120,11 @@ io.on('connection', (socket) => {
             console.log(`Player ${socket.id.substring(0, 4)} moving to:`, target);
             const player = entityManager.getPlayer(socket.id);
             if (player) {
+                const map = worldManager.getMap();
+                if (target.x >= 0 && target.x < map.width && target.y >= 0 && target.y < map.height) {
+                    const tile = map.tiles[target.x][target.y];
+                    console.log(`[DEBUG] Target tile (${target.x}, ${target.y}): type=${tile.type}, walkable=${tile.walkable}`);
+                }
                 // Clear attack target on manual move
                 player.targetId = null;
 

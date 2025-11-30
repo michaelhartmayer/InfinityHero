@@ -26,7 +26,7 @@ export class ItemRenderer {
                 const material = new THREE.MeshBasicMaterial({ color: 0xffd700 });
                 const mesh = new THREE.Mesh(geometry, material);
 
-                mesh.position.set(item.position.x - offsetX, item.position.y - offsetY, 0.3);
+                mesh.position.set(item.position.x - offsetX, (mapData.height - 1 - item.position.y) - offsetY, 0.3);
 
                 this.group.add(mesh);
                 this.itemMeshes.set(item.id, mesh);

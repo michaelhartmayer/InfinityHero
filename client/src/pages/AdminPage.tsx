@@ -905,7 +905,7 @@ const MapList = () => {
             placedSwatches: []
         };
 
-        await fetch('/api/map', {
+        await fetch('/api/maps', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newMap)
@@ -1123,7 +1123,7 @@ const MapEditView = () => {
 
     const handleSave = async () => {
         if (!mapData) return;
-        const res = await fetch('/api/map', {
+        const res = await fetch('/api/maps', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(mapData)

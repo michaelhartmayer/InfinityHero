@@ -5,11 +5,21 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 
 export class MapRenderer {
     public group: THREE.Group;
+    private tilesGroup: THREE.Group;
+    private collisionGroup: THREE.Group;
     private tilesetLoader: TilesetLoader;
     private currentMapData: WorldMap | null = null;
+    private isCollisionVisible: boolean = false;
 
     constructor() {
         this.group = new THREE.Group();
+        this.tilesGroup = new THREE.Group();
+        this.collisionGroup = new THREE.Group();
+        this.collisionGroup.visible = false;
+
+        this.group.add(this.tilesGroup);
+        this.group.add(this.collisionGroup);
+
         this.tilesetLoader = new TilesetLoader();
     }
 
@@ -57,7 +67,7 @@ export class MapRenderer {
 
     public renderMap(map: WorldMap) {
         this.currentMapData = map;
-        this.group.clear();
+        this.tilesGroup.clear();
 
         console.log('🎨 Rendering map with dynamic tilesets (Optimized v3)');
 
@@ -163,7 +173,7 @@ export class MapRenderer {
 
         // Determine merge function
         // @ts-ignore
-        const mergeFn = BufferGeometryUtils.mergeGeometries || BufferGeometryUtils.mergeBufferGeometries;
+        const mergeFn = BufferGeometryUtils.mergeGeometries;
 
         if (!mergeFn) {
             console.error('❌ BufferGeometryUtils.mergeGeometries not found! Map will not render.');
@@ -189,15 +199,13 @@ export class MapRenderer {
                 });
 
                 const mesh = new THREE.Mesh(mergedGeometry, material);
-                this.group.add(mesh);
+                this.tilesGroup.add(mesh);
                 console.log(`✅ Merged ${geometries.length} tiles for ${tilesetName}`);
             } catch (e) {
                 console.error(`❌ Failed to merge geometries for ${tilesetName}:`, e);
             }
         }
     }
-
-
 
     public getTilesetLoader(): TilesetLoader {
         return this.tilesetLoader;
@@ -207,6 +215,57 @@ export class MapRenderer {
         if (this.currentMapData) {
             console.log('🔄 Re-rendering map with loaded assets');
             this.renderMap(this.currentMapData);
+            // Re-render collision overlay if it was visible or just clear it so it regenerates next time
+            this.collisionGroup.clear();
+            if (this.isCollisionVisible) {
+                this.renderCollisionOverlay();
+            }
+        }
+    }
+
+    public toggleCollisionView(show: boolean) {
+        this.isCollisionVisible = show;
+        this.collisionGroup.visible = show;
+        if (show && this.collisionGroup.children.length === 0 && this.currentMapData) {
+            this.renderCollisionOverlay();
+        }
+    }
+
+    private renderCollisionOverlay() {
+        if (!this.currentMapData) return;
+        this.collisionGroup.clear();
+
+        const map = this.currentMapData;
+        const offsetX = map.width / 2;
+        const offsetY = map.height / 2;
+
+        const geometries: THREE.PlaneGeometry[] = [];
+
+        for (let x = 0; x < map.width; x++) {
+            for (let y = 0; y < map.height; y++) {
+                const tile = map.tiles[x][y];
+                if (!tile.walkable) {
+                    const geometry = new THREE.PlaneGeometry(1, 1);
+                    // Invert Y axis: map[0][0] should be at top-left
+                    geometry.translate(x - offsetX, (map.height - 1 - y) - offsetY, 0);
+                    geometries.push(geometry);
+                }
+            }
+        }
+
+        if (geometries.length > 0) {
+            // @ts-ignore
+            const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.FrontSide
+            });
+            const mesh = new THREE.Mesh(mergedGeometry, material);
+            mesh.position.z = 0.01; // Slightly above map
+            this.collisionGroup.add(mesh);
+            console.log(`✅ Rendered collision overlay with ${geometries.length} tiles`);
         }
     }
 }

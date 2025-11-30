@@ -172,7 +172,7 @@ export class WorldManager {
         if (!tile.walkable) return false;
 
         // Fallback for legacy types if walkable property isn't set correctly (though it should be)
-        if (tile.type === TileType.WALL || tile.type === TileType.WATER) return false;
+        // if (tile.type === TileType.WALL || tile.type === TileType.WATER) return false;
 
         if (isOccupied && isOccupied(rx, ry)) {
             return false;

@@ -34,7 +34,9 @@
             "passiveStrategy": "patrol",
             "attackStrategy": "melee_aggressive",
             "fleeStrategy": "critical_hp",
-            "xpReward": 150
+            "xpReward": 150,
+            "sprite": "dev_goblin_scout",
+            "spawnEffect": "smoke_bomb"
         },
         {
             "id": "goblin_warrior",
