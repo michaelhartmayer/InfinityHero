@@ -186,12 +186,19 @@ export class GameRenderer {
 
                 console.log(`⚔️ Combat Facing: Attacker(${attackerId}) -> ${attackerFacing}, Target(${targetId}) -> ${targetFacing}`);
 
-                // Try setting facing on both renderers (one will succeed, one will be ignored)
-                this.playerRenderer.setFacing(attackerId, attackerFacing);
-                this.monsterRenderer.setFacing(attackerId, attackerFacing);
+                // Set facing for attacker
+                if (this.playerRenderer.hasPlayer(attackerId)) {
+                    this.playerRenderer.setFacing(attackerId, attackerFacing);
+                } else if (this.monsterRenderer.hasMonster(attackerId)) {
+                    this.monsterRenderer.setFacing(attackerId, attackerFacing);
+                }
 
-                this.playerRenderer.setFacing(targetId, targetFacing);
-                this.monsterRenderer.setFacing(targetId, targetFacing);
+                // Set facing for target
+                if (this.playerRenderer.hasPlayer(targetId)) {
+                    this.playerRenderer.setFacing(targetId, targetFacing);
+                } else if (this.monsterRenderer.hasMonster(targetId)) {
+                    this.monsterRenderer.setFacing(targetId, targetFacing);
+                }
             } else {
                 console.warn(`⚠️ Could not find positions for combat facing: Attacker(${attackerId}), Target(${targetId})`);
             }

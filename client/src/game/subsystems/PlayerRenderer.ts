@@ -379,4 +379,8 @@ export class PlayerRenderer {
             // If they are moving, movement direction takes precedence.
         }
     }
+
+    public hasPlayer(id: string): boolean {
+        return this.playerMeshes.has(id);
+    }
 }

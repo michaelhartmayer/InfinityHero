@@ -18,6 +18,7 @@ interface Monster {
     fleeStrategy: string;
     sprite?: string;
     spawnEffect?: string;
+    xpReward?: number;
 }
 
 interface Skill {
@@ -492,7 +493,8 @@ const MonsterForm = () => {
         } else {
             setEditing({
                 id: '', name: '', baseLevel: 1, hp: 100, energy: 100,
-                passiveStrategy: 'wander', attackStrategy: 'melee_basic', fleeStrategy: 'low_hp'
+                passiveStrategy: 'wander', attackStrategy: 'melee_basic', fleeStrategy: 'low_hp',
+                xpReward: 50
             });
         }
     }, [id, isNew]);
@@ -545,6 +547,10 @@ const MonsterForm = () => {
                     <div className="form-group">
                         <label className="form-label">Energy</label>
                         <input type="number" className="form-input" value={editing.energy} onChange={e => setEditing({ ...editing, energy: parseInt(e.target.value) })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">XP Reward</label>
+                        <input type="number" className="form-input" value={editing.xpReward || 50} onChange={e => setEditing({ ...editing, xpReward: parseInt(e.target.value) })} required />
                     </div>
                 </div>
                 <div className="form-group">

@@ -16,6 +16,7 @@ export interface MonsterTemplate {
     fleeStrategy: string;
     sprite?: string;
     spawnEffect?: string;
+    xpReward?: number;
 }
 
 export class MonsterDatabase {

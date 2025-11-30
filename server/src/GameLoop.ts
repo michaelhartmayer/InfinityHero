@@ -1,4 +1,5 @@
 import { EVENTS, CONSTANTS, MonsterStrategyType, Monster, Player, Entity } from '@vibemaster/shared';
+import { getXpForLevel } from './data/ExperienceTable.js';
 import { Server } from 'socket.io';
 import { EntityManager } from './managers/EntityManager.js';
 import { SkillDatabase } from './managers/SkillDatabase.js';
@@ -115,6 +116,91 @@ export class GameLoop {
                                     if (target.type === 'player') {
                                         this.entityManager.respawnPlayer(target.id);
                                     } else {
+                                        // Award XP to all attackers
+                                        const monster = target as Monster;
+                                        const xpReward = monster.xpReward || (monster.level * 50); // Use defined XP or fallback
+
+                                        console.log(`[GameLoop] Monster ${monster.name} (${monster.id}) died. XP Reward: ${xpReward}`);
+
+                                        // DEBUG: Send to all for visibility
+                                        this.io.emit(EVENTS.CHAT_MESSAGE, {
+                                            id: Math.random().toString(36).substr(2, 9),
+                                            playerId: 'system',
+                                            playerName: 'Debug',
+                                            message: `Monster died. Reward: ${xpReward}. Attackers: ${(monster.attackers || []).join(', ')}`,
+                                            timestamp: Date.now()
+                                        });
+
+                                        // Distribute XP to all players who attacked
+                                        // Note: Currently giving full XP to everyone. Could split it if desired.
+                                        // User request: "kill a monster awards xp to anyone that attacked it at least once"
+                                        // This implies full XP or shared XP. Usually "awards xp" means they get credit.
+                                        // Let's give full XP for now as it's more fun/cooperative-friendly.
+
+                                        const attackers = monster.attackers || [];
+                                        // Ensure the killer is in the list (should be handled by applyDamage but just in case)
+                                        if (!attackers.includes(player.id)) {
+                                            attackers.push(player.id);
+                                        }
+
+                                        console.log(`[GameLoop] Awarding XP to ${attackers.length} attackers: ${attackers.join(', ')}`);
+
+                                        for (const attackerId of attackers) {
+                                            const attacker = this.entityManager.getPlayer(attackerId);
+                                            if (attacker) {
+                                                const oldXp = attacker.xp;
+                                                attacker.xp += xpReward;
+                                                console.log(`[GameLoop] Player ${attacker.name} XP: ${oldXp} -> ${attacker.xp}`);
+
+                                                // Check for Level Up
+                                                const xpNeeded = getXpForLevel(attacker.level);
+                                                if (attacker.xp >= xpNeeded) {
+                                                    console.log(`[GameLoop] Player ${attacker.name} Leveled Up! ${attacker.level} -> ${attacker.level + 1}`);
+                                                    attacker.level++;
+                                                    attacker.xp -= xpNeeded; // Carry over excess XP
+                                                    attacker.maxXp = getXpForLevel(attacker.level);
+
+                                                    // Stat increase
+                                                    attacker.maxHp += 20;
+                                                    attacker.hp = attacker.maxHp;
+                                                    attacker.maxEnergy += 10;
+                                                    attacker.energy = attacker.maxEnergy;
+
+                                                    this.io.emit(EVENTS.CHAT_MESSAGE, {
+                                                        id: Math.random().toString(36).substr(2, 9),
+                                                        playerId: 'system',
+                                                        playerName: 'System',
+                                                        message: `🎉 Level Up! ${attacker.name} is now level ${attacker.level}!`,
+                                                        timestamp: Date.now()
+                                                    });
+
+                                                    this.io.emit(EVENTS.EFFECT, {
+                                                        effectId: 'level_up',
+                                                        entityId: attacker.id,
+                                                        durationMs: 2000
+                                                    });
+                                                }
+
+                                                // Only send XP message to the specific player
+                                                // But we don't have individual sockets here easily without looking them up
+                                                // So we'll broadcast a system message or just rely on the bar updating.
+                                                // Let's send a chat message to everyone for now or just log it.
+                                                // Ideally we send to specific socket.
+                                                const socket = this.io.sockets.sockets.get(attackerId);
+                                                if (socket) {
+                                                    socket.emit(EVENTS.CHAT_MESSAGE, {
+                                                        id: Math.random().toString(36).substr(2, 9),
+                                                        playerId: 'system',
+                                                        playerName: 'System',
+                                                        message: `You gained ${xpReward} XP`,
+                                                        timestamp: Date.now()
+                                                    });
+                                                }
+                                            } else {
+                                                console.log(`[GameLoop] Attacker ${attackerId} not found`);
+                                            }
+                                        }
+
                                         this.entityManager.removeMonster(target.id);
                                     }
                                 }

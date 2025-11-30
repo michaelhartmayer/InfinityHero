@@ -1,6 +1,7 @@
 import { Player, Position, CONSTANTS, Item, Monster, MonsterStrategyType } from '@vibemaster/shared';
 import { MonsterDatabase } from './MonsterDatabase.js';
 import { ClassDatabase } from './ClassDatabase.js';
+import { getXpForLevel } from '../data/ExperienceTable.js';
 
 export class EntityManager {
     private players: Record<string, Player> = {};
@@ -70,6 +71,7 @@ export class EntityManager {
             maxEnergy: energy,
             level: 1,
             xp: 0,
+            maxXp: getXpForLevel(1),
             class: className,
             inventory: [],
             moveTarget: null,
@@ -159,7 +161,9 @@ export class EntityManager {
             movePath: [],
             sprite: template.sprite,
             spawnEffect: template.spawnEffect,
-            lastAttackTime: 0
+            lastAttackTime: 0,
+            xpReward: template.xpReward || (template.baseLevel * 50),
+            attackers: []
         };
 
         this.monsters[id] = monster;
@@ -173,7 +177,7 @@ export class EntityManager {
         name: string,
         x: number,
         y: number,
-        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType, sprite?: string, spawnEffect?: string }
+        template?: { hp?: number, level?: number, strategy?: MonsterStrategyType, sprite?: string, spawnEffect?: string, xpReward?: number }
     ): Monster {
         const hp = template?.hp || 50;
         const position = { x, y };
@@ -190,9 +194,11 @@ export class EntityManager {
             lastActionTime: Date.now(),
             moveTarget: null,
             movePath: [],
-            sprite: template.sprite,
-            spawnEffect: template.spawnEffect,
-            lastAttackTime: 0
+            sprite: template?.sprite,
+            spawnEffect: template?.spawnEffect,
+            lastAttackTime: 0,
+            xpReward: template?.xpReward || ((template?.level || 1) * 50),
+            attackers: []
         };
         this.monsters[id] = monster;
         this.updateSpatialMap(id, null, position);
@@ -241,11 +247,18 @@ export class EntityManager {
             const monster = target as Monster;
             monster.strategy = MonsterStrategyType.AGGRESSIVE;
             monster.targetId = attackerId;
+            if (!monster.attackers) monster.attackers = [];
+            if (!monster.attackers.includes(attackerId)) {
+                monster.attackers.push(attackerId);
+            }
         }
 
         if (target.hp <= 0) {
+            console.log(`[EntityManager] ${target.id} took ${damage} damage and DIED.`);
             target.hp = 0;
             return true;
+        } else {
+            console.log(`[EntityManager] ${target.id} took ${damage} damage. HP: ${target.hp}/${target.maxHp}`);
         }
         return false;
     }

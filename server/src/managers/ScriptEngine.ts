@@ -1,6 +1,7 @@
 import { EntityManager } from './EntityManager.js';
 import { Server } from 'socket.io';
 import { EVENTS, Player, Monster, Position } from '@vibemaster/shared';
+import { getXpForLevel } from '../data/ExperienceTable.js';
 
 export interface ScriptContext {
     self: Player | Monster;
@@ -97,6 +98,77 @@ export class ScriptEngine {
                 if (target.type === 'player') {
                     this.entityManager.respawnPlayer(target.id);
                 } else {
+                    // Award XP to all attackers
+                    const monster = target as Monster;
+                    const xpReward = monster.xpReward || (monster.level * 50);
+
+                    console.log(`[ScriptEngine] Monster ${monster.name} (${monster.id}) died. XP Reward: ${xpReward}`);
+
+                    this.io.emit(EVENTS.CHAT_MESSAGE, {
+                        id: Math.random().toString(36).substr(2, 9),
+                        playerId: 'system',
+                        playerName: 'Debug',
+                        message: `Monster died. Reward: ${xpReward}. Attackers: ${(monster.attackers || []).join(', ')}`,
+                        timestamp: Date.now()
+                    });
+
+                    const attackers = monster.attackers || [];
+                    // Ensure the killer is in the list
+                    if (!attackers.includes(context.self.id)) {
+                        attackers.push(context.self.id);
+                    }
+
+                    console.log(`[ScriptEngine] Awarding XP to ${attackers.length} attackers: ${attackers.join(', ')}`);
+
+                    for (const attackerId of attackers) {
+                        const attacker = this.entityManager.getPlayer(attackerId);
+                        if (attacker) {
+                            const oldXp = attacker.xp;
+                            attacker.xp += xpReward;
+                            console.log(`[ScriptEngine] Player ${attacker.name} XP: ${oldXp} -> ${attacker.xp}`);
+
+                            // Check for Level Up
+                            const xpNeeded = getXpForLevel(attacker.level);
+                            if (attacker.xp >= xpNeeded) {
+                                console.log(`[ScriptEngine] Player ${attacker.name} Leveled Up! ${attacker.level} -> ${attacker.level + 1}`);
+                                attacker.level++;
+                                attacker.xp -= xpNeeded;
+                                attacker.maxXp = getXpForLevel(attacker.level);
+
+                                // Stat increase
+                                attacker.maxHp += 20;
+                                attacker.hp = attacker.maxHp;
+                                attacker.maxEnergy += 10;
+                                attacker.energy = attacker.maxEnergy;
+
+                                this.io.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: `🎉 Level Up! ${attacker.name} is now level ${attacker.level}!`,
+                                    timestamp: Date.now()
+                                });
+
+                                this.io.emit(EVENTS.EFFECT, {
+                                    effectId: 'level_up',
+                                    entityId: attacker.id,
+                                    durationMs: 2000
+                                });
+                            }
+
+                            const socket = this.io.sockets.sockets.get(attackerId);
+                            if (socket) {
+                                socket.emit(EVENTS.CHAT_MESSAGE, {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    playerId: 'system',
+                                    playerName: 'System',
+                                    message: `You gained ${xpReward} XP`,
+                                    timestamp: Date.now()
+                                });
+                            }
+                        }
+                    }
+
                     this.entityManager.removeMonster(target.id);
                 }
             }

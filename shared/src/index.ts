@@ -27,6 +27,7 @@ export interface Player extends Entity {
     maxEnergy: number;
     level: number;
     xp: number;
+    maxXp: number;
     class: string;
     inventory: Item[];
     moveTarget: Position | null; // Current target position (next node in path)
@@ -57,6 +58,8 @@ export interface Monster extends Entity {
     sprite?: string;
     spawnEffect?: string;
     lastAttackTime?: number;
+    xpReward?: number;
+    attackers: string[];
 }
 
 export interface GameState {

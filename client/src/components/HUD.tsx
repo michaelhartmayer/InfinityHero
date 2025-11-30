@@ -58,6 +58,15 @@ export function HUD({ player }: HUDProps) {
                         />
                     </div>
                 </div>
+                <div className="bar-container">
+                    <div className="bar-text">{Math.floor(player.xp)} / {player.maxXp || 100} XP</div>
+                    <div className="bar-track">
+                        <div
+                            className="bar-fill xp-fill"
+                            style={{ width: `${(player.xp / (player.maxXp || 100)) * 100}%` }}
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -7,7 +7,7 @@
             "range": 0,
             "icon": "⚔️",
             "target": "auto-target",
-            "script": "# Cooldown\nACTIVATE cooldown 1000;\n\n# Attack for 5 base damage\nACTIVATE damage_target 5,$_target;"
+            "script": "# Cooldown\nACTIVATE cooldown 1000;\n\n# Attack for 5 base damage\nACTIVATE damage_target 10,$_target;"
         },
         {
             "id": "dev_self_heal",
@@ -16,7 +16,7 @@
             "range": 1,
             "icon": "⛑️",
             "target": "self",
-            "script": "# Set 3-second cooldown\nACTIVATE cooldown 3000;\n\n# Cost 10 energy\nACTIVATE energy_cost 10;\n\n# Heals the target\nACTIVATE heal_target 10,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,$_self,1000;\n"
+            "script": "# Set 3-second cooldown\nACTIVATE cooldown 3000;\n\n# Cost 10 energy\nACTIVATE energy_cost 10;\n\n# Heals the target\nACTIVATE heal_target 15,$_self;\n\n# Displays an Aura\nACTIVATE effect heal_aura,$_self,1000;\n"
         }
     ]
 }

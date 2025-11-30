@@ -497,7 +497,8 @@ io.on('connection', (socket) => {
                                                 level: template.baseLevel,
                                                 strategy: MonsterStrategyType.PASSIVE,
                                                 sprite: template.sprite,
-                                                spawnEffect: template.spawnEffect
+                                                spawnEffect: template.spawnEffect,
+                                                xpReward: template.xpReward
                                             }
                                         );
                                     }
@@ -529,6 +530,17 @@ io.on('connection', (socket) => {
                                     timestamp: Date.now()
                                 });
                             }
+                            break;
+
+                        case 'debug_xp':
+                            player.xp += 50;
+                            socket.emit(EVENTS.CHAT_MESSAGE, {
+                                id: Math.random().toString(36).substr(2, 9),
+                                playerId: 'system',
+                                playerName: 'System',
+                                message: `Debug: Added 50 XP. Total: ${player.xp}`,
+                                timestamp: Date.now()
+                            });
                             break;
 
                         default:

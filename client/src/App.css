@@ -170,6 +170,11 @@
   box-shadow: 0 0 10px rgba(68, 136, 255, 0.5);
 }
 
+.xp-fill {
+  background: linear-gradient(90deg, #a855f7, #d8b4fe);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
 .bar-text {
   position: absolute;
   top: 0;

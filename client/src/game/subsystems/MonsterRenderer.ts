@@ -523,4 +523,8 @@ export class MonsterRenderer {
             console.warn(`⚠️ MonsterRenderer.setFacing: State not found for ${id}`);
         }
     }
+
+    public hasMonster(id: string): boolean {
+        return this.monsterMeshes.has(id);
+    }
 }

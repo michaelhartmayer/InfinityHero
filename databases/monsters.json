@@ -10,7 +10,8 @@
             "attackStrategy": "melee_basic",
             "fleeStrategy": "low_hp",
             "sprite": "spr_dev_monster",
-            "spawnEffect": "shadow_step"
+            "spawnEffect": "shadow_step",
+            "xpReward": 15
         },
         {
             "id": "slime_blue",
@@ -21,7 +22,8 @@
             "passiveStrategy": "wander",
             "attackStrategy": "melee_basic",
             "fleeStrategy": "low_hp",
-            "sprite": "slime_green"
+            "sprite": "slime_green",
+            "xpReward": 100
         },
         {
             "id": "goblin_scout",
@@ -31,7 +33,8 @@
             "energy": 50,
             "passiveStrategy": "patrol",
             "attackStrategy": "melee_aggressive",
-            "fleeStrategy": "critical_hp"
+            "fleeStrategy": "critical_hp",
+            "xpReward": 150
         },
         {
             "id": "goblin_warrior",
@@ -41,7 +44,8 @@
             "energy": 60,
             "passiveStrategy": "guard",
             "attackStrategy": "melee_aggressive",
-            "fleeStrategy": "never"
+            "fleeStrategy": "never",
+            "xpReward": 250
         },
         {
             "id": "wolf_gray",
@@ -51,7 +55,8 @@
             "energy": 70,
             "passiveStrategy": "hunt",
             "attackStrategy": "melee_pack",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "xpReward": 200
         },
         {
             "id": "wolf_dire",
@@ -61,7 +66,8 @@
             "energy": 90,
             "passiveStrategy": "hunt",
             "attackStrategy": "melee_pack",
-            "fleeStrategy": "critical_hp"
+            "fleeStrategy": "critical_hp",
+            "xpReward": 350
         },
         {
             "id": "skeleton",
@@ -71,7 +77,8 @@
             "energy": 40,
             "passiveStrategy": "wander",
             "attackStrategy": "melee_basic",
-            "fleeStrategy": "never"
+            "fleeStrategy": "never",
+            "xpReward": 300
         },
         {
             "id": "zombie",
@@ -81,7 +88,8 @@
             "energy": 30,
             "passiveStrategy": "wander",
             "attackStrategy": "melee_slow",
-            "fleeStrategy": "never"
+            "fleeStrategy": "never",
+            "xpReward": 250
         },
         {
             "id": "spider_small",
@@ -91,7 +99,8 @@
             "energy": 50,
             "passiveStrategy": "ambush",
             "attackStrategy": "melee_poison",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "xpReward": 100
         },
         {
             "id": "spider_giant",
@@ -101,7 +110,8 @@
             "energy": 80,
             "passiveStrategy": "ambush",
             "attackStrategy": "melee_poison",
-            "fleeStrategy": "critical_hp"
+            "fleeStrategy": "critical_hp",
+            "xpReward": 400
         },
         {
             "id": "bat_cave",
@@ -111,7 +121,8 @@
             "energy": 60,
             "passiveStrategy": "fly_circle",
             "attackStrategy": "melee_swarm",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "xpReward": 150
         },
         {
             "id": "orc_grunt",
@@ -121,7 +132,8 @@
             "energy": 100,
             "passiveStrategy": "patrol",
             "attackStrategy": "melee_aggressive",
-            "fleeStrategy": "critical_hp"
+            "fleeStrategy": "critical_hp",
+            "xpReward": 500
         },
         {
             "id": "orc_shaman",
@@ -131,7 +143,8 @@
             "energy": 150,
             "passiveStrategy": "support",
             "attackStrategy": "ranged_magic",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "xpReward": 600
         },
         {
             "id": "troll",
@@ -141,7 +154,8 @@
             "energy": 120,
             "passiveStrategy": "guard",
             "attackStrategy": "melee_regenerate",
-            "fleeStrategy": "critical_hp"
+            "fleeStrategy": "critical_hp",
+            "xpReward": 750
         },
         {
             "id": "dragon_whelp",
@@ -151,7 +165,8 @@
             "energy": 200,
             "passiveStrategy": "fly_circle",
             "attackStrategy": "ranged_fire",
-            "fleeStrategy": "low_hp"
+            "fleeStrategy": "low_hp",
+            "xpReward": 1000
         }
     ]
 }
